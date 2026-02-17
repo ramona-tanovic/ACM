@@ -1,0 +1,42 @@
+library(dplyr)
+
+run_tournament <- function(strategy_specs, n_sims = 300, n_block = 30, seed = 1) {
+  set.seed(seed)
+
+  trials_all <- list()
+  idx <- 1L
+
+  for (i in seq_along(strategy_specs)) {
+    for (j in seq_along(strategy_specs)) {
+      spec_A <- strategy_specs[[i]]
+      spec_B <- strategy_specs[[j]]
+
+      for (s in 1:n_sims) {
+        trials_all[[idx]] <- simulate_match(spec_A, spec_B, n_block = n_block, sim_id = s)
+        idx <- idx + 1L
+      }
+    }
+  }
+
+  trials <- bind_rows(trials_all) %>%
+    mutate(matchup = paste(strat_A, "vs", strat_B))
+
+  summary_final <- trials %>%
+    group_by(strat_A, strat_B, sim) %>%
+    summarise(total_A = sum(payoff_A), .groups = "drop") %>%
+    group_by(strat_A, strat_B) %>%
+    summarise(mean_total_A = mean(total_A), sd_total_A = sd(total_A), .groups = "drop")
+
+  summary_blocks <- trials %>%
+    group_by(strat_A, strat_B, sim, block) %>%
+    summarise(block_payoff_A = sum(payoff_A), .groups = "drop") %>%
+    group_by(strat_A, strat_B, block) %>%
+    summarise(mean_block_A = mean(block_payoff_A), sd_block_A = sd(block_payoff_A), .groups = "drop")
+
+  list(trials = trials, summary_final = summary_final, summary_blocks = summary_blocks)
+}
+
+simulate_pair <- function(spec_A, spec_B, n_sims = 200, n_block = 30, seed = 1) {
+  set.seed(seed)
+  bind_rows(lapply(1:n_sims, function(s) simulate_match(spec_A, spec_B, n_block = n_block, sim_id = s)))
+}

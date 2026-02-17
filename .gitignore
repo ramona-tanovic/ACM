@@ -1,4 +1,21 @@
-.Rproj.user
+# R / RStudio
 .Rhistory
 .RData
 .Ruserdata
+
+# Quarto
+/.quarto/
+/assignment1/.quarto/
+/assignment1/_site/
+/assignment1/*.html
+
+# Outputs
+/assignment1/outputs/data/*
+/assignment1/outputs/figs/*
+
+# CmdStan build artifacts
+/assignment1/stan/*.hpp
+/assignment1/stan/*.o
+/assignment1/stan/*.so
+/assignment1/stan/*.dll
+/assignment1/stan/*.exe

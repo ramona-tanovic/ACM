@@ -1,0 +1,84 @@
+# R/tournament.R
+# -----------------------------------------------------------------------------
+# Tournament runner: all ordered pairings (A vs B) with many independent matches.
+#
+# Key ideas:
+# - Each match uses fresh parameters for both players, drawn from Stan priors.
+# - We repeat many matches (N_SIMS) per pairing.
+# - We record mean performance and role-swap swing with uncertainty intervals.
+#
+# Note:
+# This function expects the prior hyperparameters to be defined in R/config.R as:
+# PRIOR_RANDOM, PRIOR_WSLS, PRIOR_KTOM
+# -----------------------------------------------------------------------------
+
+run_tournament <- function(strategies, n_sims, T, priors, k = 2, seed = 123) {
+
+  if (!requireNamespace("dplyr", quietly = TRUE)) stop("Need dplyr.")
+  if (!requireNamespace("tidyr", quietly = TRUE)) stop("Need tidyr.")
+
+  pairings <- tidyr::expand_grid(A = strategies, B = strategies) |>
+    dplyr::mutate(pairing = paste0(A, " vs ", B))
+
+  # Each strategy participates in 2 * length(strategies) ordered pairings.
+  draws_per_strategy <- n_sims * 2 * length(strategies)
+
+  message("Sampling prior parameter pools via Stan (fixed_param)...")
+  pools <- list(
+    StanRandom = sample_prior_fixed_param(priors$random, n_draws = draws_per_strategy, data = PRIOR_RANDOM, seed = seed + 1),
+    WSLS       = sample_prior_fixed_param(priors$wsls,   n_draws = draws_per_strategy, data = PRIOR_WSLS,   seed = seed + 2),
+    kToM       = sample_prior_fixed_param(priors$ktom,   n_draws = draws_per_strategy, data = PRIOR_KTOM,   seed = seed + 3)
+  )
+
+  idx <- list(StanRandom = 1L, WSLS = 1L, kToM = 1L)
+
+  total_rows <- nrow(pairings) * n_sims
+  out <- vector("list", total_rows)
+  row_i <- 1L
+
+  set.seed(seed)
+
+  for (p in seq_len(nrow(pairings))) {
+    A <- pairings$A[p]
+    B <- pairings$B[p]
+    pairing_label <- pairings$pairing[p]
+
+    message("Simulating pairing: ", pairing_label)
+
+    for (s in seq_len(n_sims)) {
+
+      paramsA <- pools[[A]][idx[[A]], ]
+      idx[[A]] <- idx[[A]] + 1L
+
+      paramsB <- pools[[B]][idx[[B]], ]
+      idx[[B]] <- idx[[B]] + 1L
+
+      agentA <- make_agent(A, paramsA, k = k)
+      agentB <- make_agent(B, paramsB, k = k)
+
+      sim <- simulate_match(
+        agentA = agentA,
+        agentB = agentB,
+        T = T,
+        payoff_win = PAYOFF_WIN,
+        payoff_loss = PAYOFF_LOSS
+      )
+
+      out[[row_i]] <- data.frame(
+        pairing = pairing_label,
+        A = A,
+        B = B,
+        sim_id = s,
+        total_payoff = sim$total_payoff,
+        payoff_first = sim$payoff_first,
+        payoff_second = sim$payoff_second,
+        swing = sim$swing,
+        winrate = sim$winrate,
+        stringsAsFactors = FALSE
+      )
+      row_i <- row_i + 1L
+    }
+  }
+
+  dplyr::bind_rows(out)
+}

@@ -1,0 +1,164 @@
+---
+title: "Assignment 1 — Matching Pennies: Three Strategy Models + Simulations"
+author: "Ramona"
+format:
+  html:
+    toc: true
+    code-fold: show
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+## Overview
+
+This report implements **three** simple strategy models for the **Matching Pennies** game and compares their performance in simulation under the course protocol: 30 trials, then a role swap (Matcher ↔ Hider), then 30 more trials (60 total). Payoffs are +1 when your role condition is met (Matcher: same action; Hider: different action), and −1 otherwise.
+
+Repository link: 
+
+
+## Strategies and implied cognitive constraints
+
+### Strategy 1: Random (baseline)
+
+Verbal description: choose Left/Right independently each trial with 50/50 probability.
+
+Cognitive constraints:
+- Memory: none
+- Inference: none
+- Noise: behavior is pure randomness
+
+Diagram:
+
+```mermaid
+flowchart TD
+  A[Start trial] --> B[Sample action: Left or Right (50/50)]
+  B --> C[Play action]
+  C --> D[No learning]
+```
+
+Formalization:
+- \(a_t \sim \text{Bernoulli}(0.5)\)
+
+### Strategy 2: Win–Stay Lose–Shift (WSLS)
+
+Verbal description: repeat last action if it was rewarded (win), otherwise switch (lose).
+
+Cognitive constraints:
+- Memory: stores previous action and previous outcome (1-step memory)
+- Inference: none (reactive rule)
+- Noise/lapses: with small probability, choose randomly anyway (a “lapse”)
+
+Diagram:
+
+```mermaid
+flowchart TD
+  A[Start trial] --> B{Have previous trial?}
+  B -- No --> C[Pick random action]
+  B -- Yes --> D{Previous payoff > 0?}
+  D -- Yes --> E[Repeat previous action]
+  D -- No --> F[Switch action]
+  C --> G[Play action]
+  E --> G
+  F --> G
+```
+
+Formalization (deterministic core):
+- If \(r_{t-1}>0\), \(a_t=a_{t-1}\); else \(a_t=1-a_{t-1}\)
+
+
+### Strategy 3: Forgetful bias tracker (creative/ambitious but still simple)
+
+Verbal description: keep a running estimate of how often the opponent plays action 1. If you are the **Matcher**, choose the opponent’s most likely action; if you are the **Hider**, choose the opposite. The estimate updates with **exponential forgetting** (recent trials matter more). A small lapse rate means you sometimes press randomly.
+
+Cognitive constraints:
+- Memory: a *single* number \(\hat p_t\) (compressed memory), with forgetting controlled by an update rate
+- Inference: limited to first-order bias (does not model patterns like alternation)
+- Noise/lapses: occasional random presses
+
+Diagram:
+
+```mermaid
+flowchart TD
+  A[Start trial] --> B[Belief p_hat about opponent choosing 1]
+  B --> C{Role?}
+  C -- Matcher --> D[Choose most likely opponent action]
+  C -- Hider --> E[Choose opposite of most likely opponent action]
+  D --> F[Play action]
+  E --> F
+  F --> G[Observe opponent action]
+  G --> H[Update p_hat with forgetting]
+```
+
+Formalization:
+- Maintain belief \(\hat p_t \in [0,1]\) that opponent chooses 1.
+- Action rule (core, without lapses):
+  - Matcher: \(a_t = \mathbb{1}[\hat p_t > 0.5]\) (tie → random)
+  - Hider: \(a_t = 1 - \mathbb{1}[\hat p_t > 0.5]\) (tie → random)
+- Learning rule (exponential moving average):
+  - \(\hat p_{t+1} = (1-\eta)\hat p_t + \eta \cdot o_t\), where \(o_t\in\{0,1\}\) is opponent’s action and \(\eta\) controls forgetting (higher \(\eta\) = shorter memory).
+
+
+## Simulation study
+
+### Implementation notes
+
+- Protocol: 30 trials, swap roles, 30 trials (60 total).
+- Agent A starts as Matcher; Agent B starts as Hider; then they swap.
+- Tournament: repeated matches across all strategy pairs.
+
+### Run the simulations (embedded)
+
+```{r run}
+library(tidyverse)
+library(here)
+library(patchwork)
+
+source(here("assignment1/R/strategies.R"))
+source(here("assignment1/R/tournament.R"))
+source(here("assignment1/R/plotting.R"))
+
+set.seed(1)
+
+strategies <- default_strategies()
+
+# Keep this modest so rendering stays quick; increase in run_all.R for final outputs.
+res <- run_tournament(strategies, n_sims = 200, n_block = 30, seed = 1)
+
+# Save artifacts used below
+dir.create(here("assignment1/data/processed"), recursive = TRUE, showWarnings = FALSE)
+dir.create(here("assignment1/figs"), recursive = TRUE, showWarnings = FALSE)
+
+write_csv(res$trials, here("assignment1/data/processed/trials.csv"))
+write_csv(res$summary_final, here("assignment1/data/processed/summary_final.csv"))
+```
+
+### Results plots
+
+```{r plot1}
+p_cum <- plot_mean_cum_payoff(res$trials)
+p_heat <- plot_final_heatmap(res$summary_final)
+p_dist <- plot_final_distribution(res$summary_final)
+
+p_cum
+```
+
+```{r plot2}
+p_heat
+```
+
+```{r plot3}
+p_dist
+```
+
+Brief interpretation (very short):
+- Random vs Random should hover around 0 (no structure to exploit).
+- WSLS uses 1-step memory and can create streaks depending on the opponent.
+- The Forgetful bias tracker does well if the opponent is biased, but can be exploited if the opponent adapts.
+
+## Reproducibility checklist
+
+- Code is organized into strategy definitions, a game loop, tournament runner, and plotting modules.
+- `run_all.R` produces `data/processed/*.csv`, `figs/*.png`, and renders this report.
+- Replace the placeholder above with your repo URL after pushing.

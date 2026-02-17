@@ -1,0 +1,16 @@
+# ACM (Advanced Cognitive Modelling)
+
+This repository contains small, self-contained assignments for the course material from:
+fusaroli.github.io/AdvancedCognitiveModeling2023/
+
+Current content:
+- `assignment1/`: Repeated Matching Pennies as a strategy tournament + Bayesian parameter story (Stan priors + Stan posterior fitting).
+
+How to run
+1. Open `ACM.Rproj` in RStudio (recommended), or open the folder as a project.
+2. Go into `assignment1/` and follow the instructions in `assignment1/README.md`.
+
+Notes
+- Stan is used in two roles:
+  (A) sampling heterogeneous agent parameters from explicit priors (fixed_param)
+  (B) fitting an interpretable WSLS-style policy model to generated sequences (posterior inference)

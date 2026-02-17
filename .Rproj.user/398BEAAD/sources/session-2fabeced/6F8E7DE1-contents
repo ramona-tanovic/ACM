@@ -1,0 +1,67 @@
+# Advanced Cognitive Modeling (ACM)
+
+This repository contains my coursework for the Advanced Cognitive Modeling course.  
+Each assignment lives in its own folder (e.g., `assignment1/`) with its own code and Quarto report.
+
+## Requirements
+
+- R (recent version) and RStudio are recommended.
+- Quarto is required only if you want to render `.qmd` reports to HTML/PDF (the simulations/plots can still run without rendering).
+
+## Reproducible setup (recommended: `renv`)
+
+This repo uses `renv` to capture the R package versions in `renv.lock`.
+
+After cloning the repo and opening `ACM.Rproj` in RStudio:
+
+```r
+install.packages("renv")
+renv::restore()
+```
+
+When you install new packages during the course, update the lockfile:
+
+```r
+renv::snapshot()
+```
+
+Notes:
+- Do NOT commit `renv/library/` (it is machine-specific and large). Only commit `renv.lock` and the `renv/` metadata files.
+
+## Running Assignment 1
+
+From the repo root in R:
+
+```r
+setwd("assignment1")
+source("run_all.R")
+```
+
+Outputs are written to:
+- `assignment1/data/processed/` (CSV files)
+- `assignment1/figs/` (PNG figures)
+
+If Quarto is installed, `run_all.R` also renders `assignment1/assignment1.qmd` to an HTML report.
+
+## If you are NOT using `renv`
+
+Install the packages used by Assignment 1:
+
+```r
+install.packages(c("tidyverse", "here", "patchwork", "knitr"))
+```
+
+(Quarto is typically installed as a separate application/CLI; if Quarto is not installed, you can still run the simulations and generate figures via `run_all.R`.)
+
+## Repo structure (typical)
+
+- `assignment1/` — Matching Pennies strategies + simulation + report
+- `renv/`, `renv.lock` — reproducible R environment
+- `ACM.Rproj` — RStudio project file
+
+## Git hygiene
+
+Recommended ignores in the root `.gitignore`:
+- `.Rproj.user/`, `.Rhistory`, `.RData`, `.Ruserdata`
+- `renv/library/`
+- OS junk like `.DS_Store`

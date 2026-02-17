@@ -1,0 +1,108 @@
+# End-to-end pipeline for ACM Assignment 1 (Matching Pennies + Stan)
+# - Draw strategy parameters from Stan priors
+# - Run tournament
+# - Produce minimal high-signal figures
+# - Fit a Stan WSLS policy model to sequences and plot posterior
+
+suppressPackageStartupMessages({
+  library(dplyr)
+  library(readr)
+  library(ggplot2)
+  library(tidyr)
+  library(posterior)
+})
+
+# Make sure relative paths work (RStudio / Quarto / plain R)
+try({
+  if (requireNamespace("rstudioapi", quietly = TRUE) && rstudioapi::isAvailable()) {
+    setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+  }
+}, silent = TRUE)
+
+source(file.path("R", "stan_priors.R"))
+source(file.path("R", "strategies.R"))
+source(file.path("R", "game.R"))
+source(file.path("R", "tournament.R"))
+source(file.path("R", "plotting.R"))
+source(file.path("R", "stan_fit.R"))
+
+dir.create(file.path("data", "processed"), recursive = TRUE, showWarnings = FALSE)
+dir.create("figs", showWarnings = FALSE)
+
+# ---- 1) Stan prior draws (used by the tournament) ----
+wsls_draws <- sample_prior_draws(
+  stan_file = file.path("stan", "prior_wsls.stan"),
+  vars = c("p_repeat_win", "p_repeat_loss", "lapse"),
+  n_draws = 2000,
+  seed = 1
+)
+
+rand_draws <- sample_prior_draws(
+  stan_file = file.path("stan", "prior_random.stan"),
+  vars = c("p"),
+  n_draws = 2000,
+  seed = 2
+)
+
+ktom_draws <- sample_prior_draws(
+  stan_file = file.path("stan", "prior_ktom.stan"),
+  vars = c("eta", "beta", "w_raw"),
+  n_draws = 2000,
+  seed = 3
+)
+
+write_csv(wsls_draws, file.path("data", "processed", "stan_prior_draws_wsls.csv"))
+write_csv(rand_draws, file.path("data", "processed", "stan_prior_draws_random.csv"))
+write_csv(ktom_draws, file.path("data", "processed", "stan_prior_draws_ktom.csv"))
+
+# ---- 2) Strategies (Stan-only) ----
+strategies <- list(
+  make_stan_random(rand_draws),
+  make_wsls_stan(wsls_draws),
+  make_ktom_stan(ktom_draws, k = 2)  # keep k small for clarity + speed
+)
+
+# ---- 3) Tournament ----
+res <- run_tournament(
+  strategy_specs = strategies,
+  n_sims = 400,
+  n_block = 30,
+  seed = 10
+)
+
+write_csv(res$trials, file.path("data", "processed", "trials.csv"))
+write_csv(res$summary_final, file.path("data", "processed", "summary_final.csv"))
+write_csv(res$summary_blocks, file.path("data", "processed", "summary_blocks.csv"))
+write_csv(res$summary_role_swing, file.path("data", "processed", "role_swing.csv"))
+
+# Minimal figure set (no heatmaps)
+p_bars <- plot_matchup_bars(res$trials)
+ggsave(file.path("figs", "matchup_bars.png"), p_bars, width = 11, height = 6, dpi = 220)
+
+p_swing <- plot_role_swap_swing(res$summary_role_swing)
+ggsave(file.path("figs", "role_swap_swing.png"), p_swing, width = 10, height = 6, dpi = 220)
+
+p_dist <- plot_payoff_distribution(res$trials)
+ggsave(file.path("figs", "payoff_distribution.png"), p_dist, width = 10, height = 6, dpi = 220)
+
+# ---- 4) Stan posterior fit (WSLS policy) ----
+# Fit to sequences where A varies and B is StanRandom (baseline)
+baseline <- strategies[[1]]
+stan_file_fit <- file.path("stan", "wsls_policy.stan")
+
+fits <- list()
+labels <- c()
+
+for (spec_A in strategies) {
+  trials_pair <- simulate_pair(spec_A, baseline, n_sims = 250, seed = 20)
+  fit <- fit_wsls_policy(trials_pair, stan_file = stan_file_fit, seed = 21)
+  fits[[length(fits) + 1]] <- fit
+  labels <- c(labels, spec_A$name)
+}
+
+# Plot posterior for WSLS fit on WSLS-generated data (the most interpretable one)
+# (If you want all, extend the plotting function similarly.)
+p_post <- plot_wsls_posterior(fits[[which(labels == "WSLS(Stan)")]], title = "WSLS policy posterior (WSLS vs StanRandom)")
+ggsave(file.path("figs", "stan_posterior_wsls.png"), p_post, width = 10, height = 5.5, dpi = 220)
+
+message("Done. Figures in figs/, outputs in data/processed/.")

@@ -1,0 +1,29 @@
+// stan/priors_wsls.stan
+// -----------------------------------------------------------------------------
+// Prior sampler for WSLS (Win–Stay / Lose–Shift) in fixed_param mode.
+// Draws per iteration:
+//   p_repeat_win  ~ Beta(a_win,  b_win)
+//   p_repeat_loss ~ Beta(a_loss, b_loss)
+//   lapse         ~ Beta(a_lapse, b_lapse)
+// -----------------------------------------------------------------------------
+
+data {
+  real<lower=0> a_win;
+  real<lower=0> b_win;
+
+  real<lower=0> a_loss;
+  real<lower=0> b_loss;
+
+  real<lower=0> a_lapse;
+  real<lower=0> b_lapse;
+}
+
+generated quantities {
+  real<lower=0,upper=1> p_repeat_win;
+  real<lower=0,upper=1> p_repeat_loss;
+  real<lower=0,upper=1> lapse;
+
+  p_repeat_win  = beta_rng(a_win,  b_win);
+  p_repeat_loss = beta_rng(a_loss, b_loss);
+  lapse         = beta_rng(a_lapse, b_lapse);
+}

@@ -1,0 +1,129 @@
+---
+title: "Assignment 1 — Matching Pennies: Two Strategy Models + Simulations"
+author: "Your Name"
+format:
+  html:
+    toc: true
+    code-fold: show
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+## Overview
+
+This report implements **two** simple strategy models for the **Matching Pennies** game and compares their performance in simulation under the course protocol: 30 trials, then a role swap (Matcher ↔ Hider), then 30 more trials (60 total). Payoffs are +1 when your role condition is met (Matcher: same action; Hider: different action), and −1 otherwise.
+
+Repository link: 
+
+## Strategies and implied cognitive constraints
+
+### Strategy 1: Random (baseline)
+
+Verbal description: choose Left/Right independently each trial with 50/50 probability.
+
+Cognitive constraints:
+- Memory: none
+- Inference: none
+- Noise: behavior is pure randomness
+
+Diagram:
+
+```mermaid
+flowchart TD
+  A[Start trial] --> B[Sample action: Left or Right (50/50)]
+  B --> C[Play action]
+  C --> D[No learning]
+```
+
+Formalization:
+- \(a_t \sim \text{Bernoulli}(0.5)\)
+
+### Strategy 2: Win–Stay Lose–Shift (WSLS)
+
+Verbal description: repeat last action if it was rewarded (win), otherwise switch (lose).
+
+Cognitive constraints:
+- Memory: stores previous action and previous outcome (1-step memory)
+- Inference: none (reactive rule)
+- Noise/lapses: with small probability, choose randomly anyway (a “lapse”)
+
+Diagram:
+
+```mermaid
+flowchart TD
+  A[Start trial] --> B{Have previous trial?}
+  B -- No --> C[Pick random action]
+  B -- Yes --> D{Previous payoff > 0?}
+  D -- Yes --> E[Repeat previous action]
+  D -- No --> F[Switch action]
+  C --> G[Play action]
+  E --> G
+  F --> G
+```
+
+Formalization (deterministic core):
+- If \(r_{t-1}>0\), \(a_t=a_{t-1}\); else \(a_t=1-a_{t-1}\)
+
+## Simulation study
+
+### Implementation notes
+
+- Protocol: 30 trials, swap roles, 30 trials (60 total).
+- Agent A starts as Matcher; Agent B starts as Hider; then they swap.
+- Tournament: repeated matches across all strategy pairs.
+
+### Run the simulations (embedded)
+
+```{r}
+library(tidyverse)
+library(here)
+library(patchwork)
+
+source(here("R/strategies.R"))
+source(here("R/tournament.R"))
+source(here("R/plotting.R"))
+
+set.seed(1)
+
+strategies <- default_strategies()
+
+# Keep this modest so rendering stays quick; increase in run_all.R for final outputs.
+res <- run_tournament(strategies, n_sims = 200, n_block = 30, seed = 1)
+
+# Save artifacts used below
+dir.create(here("data/processed"), recursive = TRUE, showWarnings = FALSE)
+dir.create(here("figs"), recursive = TRUE, showWarnings = FALSE)
+
+write_csv(res$trials, here("data/processed/trials.csv"))
+write_csv(res$summary_final, here("data/processed/summary_final.csv"))
+```
+
+### Results plots
+
+```{r}
+p_cum <- plot_mean_cum_payoff(res$trials)
+p_heat <- plot_final_heatmap(res$summary_final)
+p_dist <- plot_final_distribution(res$summary_final)
+
+p_cum
+```
+
+```{r}
+p_heat
+```
+
+```{r}
+p_dist
+```
+
+Brief interpretation (very short):
+- Random vs Random should hover around 0 (no one has exploitable structure).
+- WSLS can sometimes create short-term streaks against Random, but in expectation both players should be near 0 over many games because Matching Pennies is a zero-sum game.
+
+## Reproducibility checklist
+
+- Code is organized into strategy definitions, a game loop, tournament runner, and plotting modules.
+- `run_all.R` produces `data/processed/*.csv`, `figs/*.png`, and renders this report.
+- Replace the placeholder above with your repo URL after pushing.

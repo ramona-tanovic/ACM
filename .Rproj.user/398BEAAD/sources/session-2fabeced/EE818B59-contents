@@ -1,0 +1,71 @@
+// stan/wsls_policy.stan
+// -----------------------------------------------------------------------------
+// Interpretable WSLS policy model for action sequences.
+//
+// Data are many independent matches concatenated into one long vector.
+// We only evaluate transitions *within* a match (t=2..T for each match).
+//
+// Parameters (all in [0,1]):
+// - p_repeat_win  : probability of repeating previous action after a win
+// - p_repeat_loss : probability of repeating previous action after a loss
+// - lapse         : mixture toward random responding (0.5)
+//
+// Likelihood idea:
+// Let same_t = 1 if a_t == a_{t-1}, else 0.
+// Then:
+//   P(same_t = 1) = (1-lapse) * p_rep + lapse * 0.5
+// where p_rep = p_repeat_win if previous trial was a win, else p_repeat_loss.
+//
+// This is deliberately simple so the posterior is easy to interpret.
+// -----------------------------------------------------------------------------
+
+data {
+  int<lower=1> S;                 // number of sequences (matches)
+  int<lower=2> T;                 // trials per sequence
+  int<lower=0,upper=1> a[S*T];    // A actions (0/1), concatenated
+  int<lower=0,upper=1> b[S*T];    // B actions (0/1), concatenated
+  int<lower=0,upper=1> roleA[S*T];// 1 Matcher, 0 Mismatcher
+  int<lower=1> start_idx[S];      // start index of each sequence in concatenated arrays
+}
+
+parameters {
+  real<lower=0,upper=1> p_repeat_win;
+  real<lower=0,upper=1> p_repeat_loss;
+  real<lower=0,upper=1> lapse;
+}
+
+model {
+  // Weakly-informative priors (uniform on [0,1])
+  p_repeat_win  ~ beta(1, 1);
+  p_repeat_loss ~ beta(1, 1);
+  lapse         ~ beta(1, 1);
+
+  for (s in 1:S) {
+    int base = start_idx[s];
+
+    // Within each match, evaluate transitions t=2..T
+    for (t in 2:T) {
+      int i_prev = base + t - 2;
+      int i      = base + t - 1;
+
+      // Did A win on the previous trial?
+      int win_prev;
+      if (roleA[i_prev] == 1) {
+        win_prev = (a[i_prev] == b[i_prev]);
+      } else {
+        win_prev = (a[i_prev] != b[i_prev]);
+      }
+
+      // Repeat-probability depends on win/loss
+      real p_rep = (win_prev == 1) ? p_repeat_win : p_repeat_loss;
+
+      // Probability that current action equals previous action
+      real p_same = (1 - lapse) * p_rep + lapse * 0.5;
+
+      // same_t is the indicator "did we repeat?"
+      int same_t = (a[i] == a[i_prev]);
+
+      same_t ~ bernoulli(p_same);
+    }
+  }
+}

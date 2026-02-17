@@ -1,0 +1,130 @@
+#!/usr/bin/env Rscript
+# assignment1/run_all.R
+# -----------------------------------------------------------------------------
+# One script to run the full pipeline:
+#   1) sample strategy parameters from Stan priors (fixed_param)
+#   2) run the strategy tournament with a mid-game role swap
+#   3) compute bootstrap uncertainty intervals
+#   4) generate 4 figures
+#   5) fit an interpretable WSLS policy model in Stan to generated sequences
+# -----------------------------------------------------------------------------
+
+# --- Setup -------------------------------------------------------------------
+setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+
+# --- Packages ----------------------------------------------------------------
+renv::load() # load packages from renv.lock
+renv::status() # check for any issues with package versions
+renv::snapshot() # update renv.lock if any packages were changed
+
+# --- Source code --------------------------------------------------------------
+source(file.path("R", "config.R"))
+source(file.path("R", "stan_sampling.R"))
+source(file.path("R", "strategies.R"))
+source(file.path("R", "game.R"))
+source(file.path("R", "bootstrap.R"))
+source(file.path("R", "tournament.R"))
+source(file.path("R", "fit_policy.R"))
+source(file.path("R", "plots.R"))
+
+set.seed(1) # for reproducibility of any non-Stan random operations
+
+# --- Stan file paths ----------------------------------------------------------
+priors <- list(
+  random = file.path("stan", "priors_random.stan"),
+  wsls   = file.path("stan", "priors_wsls.stan"),
+  ktom   = file.path("stan", "priors_ktom.stan"),
+  policy = file.path("stan", "wsls_policy.stan")
+)
+
+# --- 1) Tournament ------------------------------------------------------------
+message("\n=== Running tournament ===")
+tourn <- run_tournament(
+  strategies = STRATEGIES,
+  n_sims = N_SIMS,
+  T = T_TRIALS,
+  priors = priors,
+  k = KTOM_K,
+  seed = SEED
+)
+
+readr::write_csv(tourn, file.path(OUT_DATA_DIR, "tournament_results.csv"))
+
+# --- 2) Bootstrap summaries ---------------------------------------------------
+message("\n=== Bootstrapping uncertainty intervals ===")
+matchup_sum <- summarise_matchups(tourn, R = BOOT_R, level = CI_LEVEL, seed = SEED)
+swing_sum   <- summarise_role_swing(tourn, R = BOOT_R, level = CI_LEVEL, seed = SEED)
+
+readr::write_csv(matchup_sum, file.path(OUT_DATA_DIR, "matchup_summary.csv"))
+readr::write_csv(swing_sum,   file.path(OUT_DATA_DIR, "role_swing_summary.csv"))
+
+# --- 3) Figures 1, 2, 4 -------------------------------------------------------
+message("\n=== Saving figures (1, 2, 4) ===")
+plot_fig1_matchups(matchup_sum, file.path(OUT_FIG_DIR, "fig1_matchups.png"))
+plot_fig2_role_swing(swing_sum, file.path(OUT_FIG_DIR, "fig2_role_swing.png"))
+plot_fig4_payoff_distribution(tourn, file.path(OUT_FIG_DIR, "fig4_payoff_distribution.png"))
+
+# --- 4) Stan policy fits (Fig 3) ---------------------------------------------
+message("\n=== Fitting WSLS policy model in Stan (Fig 3) ===")
+
+fit_strategies <- c("StanRandom", "WSLS", "kToM")
+all_draws <- list()
+all_summaries <- list()
+
+for (st in fit_strategies) {
+  message("\nPolicy fit for strategy: ", st)
+
+  dat <- generate_policy_fit_data(
+    strategyA = st,
+    S = S_FIT,
+    T = T_TRIALS,
+    priors = priors,
+    k = KTOM_K,
+    seed = SEED
+  )
+
+  fit <- fit_wsls_policy(
+    data_list = dat,
+    stan_file = priors$policy,
+    seed = SEED
+  )
+
+  # Extract posterior draws for the key parameters
+  draws_df <- fit$draws(
+    variables = c("p_repeat_win", "p_repeat_loss", "lapse"),
+    format = "df"
+  )
+
+  draws_df$strategy <- st
+  all_draws[[st]] <- draws_df
+
+  # Simple posterior summaries
+  summ <- posterior::summarise_draws(
+    posterior::as_draws_df(draws_df[, c("p_repeat_win", "p_repeat_loss", "lapse")]),
+    mean, median,
+    ~posterior::quantile2(.x, probs = c(0.025, 0.975))
+  )
+  summ$strategy <- st
+  all_summaries[[st]] <- summ
+}
+
+draws_all <- dplyr::bind_rows(all_draws)
+summ_all  <- dplyr::bind_rows(all_summaries)
+
+readr::write_csv(draws_all, file.path(OUT_DATA_DIR, "policy_draws.csv"))
+readr::write_csv(summ_all,  file.path(OUT_DATA_DIR, "policy_summary.csv"))
+
+# Convert to long format for plotting
+draws_long <- draws_all |>
+  dplyr::select(strategy, p_repeat_win, p_repeat_loss, lapse) |>
+  tidyr::pivot_longer(
+    cols = c(p_repeat_win, p_repeat_loss, lapse),
+    names_to = "parameter",
+    values_to = "value"
+  )
+
+plot_fig3_policy_posteriors(draws_long, file.path(OUT_FIG_DIR, "fig3_policy_posteriors.png"))
+
+message("\nDone. Outputs written to:")
+message(" - ", OUT_DATA_DIR)
+message(" - ", OUT_FIG_DIR)

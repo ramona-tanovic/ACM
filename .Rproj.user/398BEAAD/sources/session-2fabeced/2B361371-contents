@@ -1,0 +1,187 @@
+# R/strategies.R
+# -----------------------------------------------------------------------------
+# Strategy implementations.
+#
+# Important design choice:
+# Strategies are *stateful* objects (lists with functions).
+# Each agent keeps a small internal state that is updated after each trial.
+#
+# This is a nice match to cognitive modelling: a "strategy" is a policy + memory.
+# -----------------------------------------------------------------------------
+
+# Sample a Bernoulli(p) action returning 0/1
+rbern <- function(p) {
+  as.integer(stats::rbinom(1, size = 1, prob = p))
+}
+
+# Mix an intended action with a "lapse" toward random 0.5 responding
+apply_lapse <- function(action01, lapse) {
+  if (stats::runif(1) < lapse) {
+    return(rbern(0.5))
+  }
+  action01
+}
+
+# --- StanRandom ---------------------------------------------------------------
+# Each agent has one parameter p in (0,1).
+# Every trial: play action 1 with probability p (otherwise action 0).
+make_agent_stanrandom <- function(params) {
+  p <- params$p
+  list(
+    name = "StanRandom",
+    choose = function(role, t) {
+      # role is ignored here (this baseline does not adapt)
+      rbern(p)
+    },
+    update = function(opp_action, role, win, my_action) {
+      # nothing to update (memoryless)
+      invisible(NULL)
+    }
+  )
+}
+
+# --- WSLS (Win–Stay / Lose–Shift) --------------------------------------------
+# Parameters:
+# - p_repeat_win  : probability of repeating previous action after a win
+# - p_repeat_loss : probability of repeating previous action after a loss
+# - lapse         : probability of "random responding" on a trial
+make_agent_wsls <- function(params) {
+
+  p_repeat_win  <- params$p_repeat_win
+  p_repeat_loss <- params$p_repeat_loss
+  lapse <- params$lapse
+
+  # Internal state starts empty (no previous trial)
+  state <- new.env(parent = emptyenv())
+  state$last_action <- NA_integer_
+  state$last_win <- NA
+
+  list(
+    name = "WSLS",
+    choose = function(role, t) {
+      # On the first trial, there is no "previous action" yet.
+      if (is.na(state$last_action)) {
+        return(rbern(0.5))
+      }
+
+      # Choose whether to repeat based on whether we won last trial
+      p_rep <- if (isTRUE(state$last_win)) p_repeat_win else p_repeat_loss
+      repeat_action <- (stats::runif(1) < p_rep)
+
+      intended <- if (repeat_action) state$last_action else (1L - state$last_action)
+
+      # Apply lapse (mixture toward random 0.5)
+      apply_lapse(intended, lapse)
+    },
+    update = function(opp_action, role, win, my_action) {
+      # Store what happened for next trial
+      state$last_action <- my_action
+      state$last_win <- win
+      invisible(NULL)
+    }
+  )
+}
+
+# --- k-ToM-ish (belief + best response with shallow recursive flavour) --------
+# This is a practical implementation that is easy to explain:
+# - Maintain a belief b_opp about P(opponent plays 1)
+# - Update it with a delta rule controlled by alpha
+# - Convert belief into a best response using a soft choice rule controlled by beta
+# - Add lapse toward random responding
+#
+# "k-level" part (kept lightweight on purpose):
+# - Maintain b_me as a running estimate of "my own action rate"
+# - Predict opponent as (partly) best-responding to b_me (as if opponent reasons)
+# - Blend that prediction with empirical belief b_opp
+# - The blending weight increases with k (more "strategic" reasoning)
+make_agent_ktom <- function(params, k = 2) {
+
+  alpha <- params$alpha
+  beta  <- params$beta
+  lapse <- params$lapse
+
+  state <- new.env(parent = emptyenv())
+  state$b_opp <- 0.5   # belief about opponent playing 1
+  state$b_me  <- 0.5   # running estimate of own action rate (proxy for "what opponent thinks")
+
+  # Helper: probability of choosing action 1 as soft best response
+  # role: 1 = Matcher, 0 = Mismatcher
+  p1_soft_best_response <- function(belief_opp_plays_1, role, beta, lapse) {
+    # For Matcher: prefer 1 if opponent likely plays 1.
+    # For Mismatcher: prefer 1 if opponent likely plays 0.
+    v <- (2 * belief_opp_plays_1 - 1)  # in [-1, 1]
+    if (role == 0L) v <- -v            # flip preference for Mismatcher
+
+    # Soft choice (logistic); multiply by 2 to make the curve a bit steeper
+    p1 <- stats::plogis(beta * 2 * v)
+
+    # Apply lapse mixture
+    (1 - lapse) * p1 + lapse * 0.5
+  }
+
+  list(
+    name = "kToM",
+    choose = function(role, t) {
+
+      # Opponent's role is always the opposite of ours in Matching Pennies
+      role_opp <- 1L - role
+
+      # Base belief from observation
+      b_opp <- state$b_opp
+      b_me  <- state$b_me
+
+      # "Opponent best response" prediction (assuming opponent is like me)
+      p1_opp_br <- p1_soft_best_response(
+        belief_opp_plays_1 = b_me,      # opponent's belief about me (proxy)
+        role = role_opp,
+        beta = beta,
+        lapse = lapse
+      )
+
+      # k controls how much we trust the strategic prediction vs empirical belief
+      phi <- k / (k + 1)  # e.g., k=2 -> phi=0.667
+      p1_opp_pred <- (1 - phi) * b_opp + phi * p1_opp_br
+
+      # Now choose a soft best response to the predicted opponent action rate
+      p1_me <- p1_soft_best_response(
+        belief_opp_plays_1 = p1_opp_pred,
+        role = role,
+        beta = beta,
+        lapse = lapse
+      )
+
+      rbern(p1_me)
+    },
+    update = function(opp_action, role, win, my_action) {
+      # Delta-rule belief update for opponent
+      state$b_opp <- state$b_opp + alpha * (opp_action - state$b_opp)
+
+      # Update running estimate of own action rate (used for ToM prediction)
+      state$b_me <- state$b_me + alpha * (my_action - state$b_me)
+
+      invisible(NULL)
+    }
+  )
+}
+
+# --- Factory: create agent given strategy name + parameter row ----------------
+make_agent <- function(strategy_name, params_row, k = 2) {
+  if (strategy_name == "StanRandom") {
+    return(make_agent_stanrandom(list(p = params_row$p)))
+  }
+  if (strategy_name == "WSLS") {
+    return(make_agent_wsls(list(
+      p_repeat_win  = params_row$p_repeat_win,
+      p_repeat_loss = params_row$p_repeat_loss,
+      lapse = params_row$lapse
+    )))
+  }
+  if (strategy_name == "kToM") {
+    return(make_agent_ktom(list(
+      alpha = params_row$alpha,
+      beta  = params_row$beta,
+      lapse = params_row$lapse
+    ), k = k))
+  }
+  stop("Unknown strategy: ", strategy_name)
+}

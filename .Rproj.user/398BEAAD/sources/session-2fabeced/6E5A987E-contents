@@ -1,0 +1,85 @@
+---
+title: "Assignment 1 — Matching Pennies as a strategy tournament"
+author: "Ramona"
+format: html
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+## Concept
+
+We model repeated Matching Pennies as a small “strategy tournament” under uncertainty, and we connect simulated behaviour to interpretable parameters using Stan.
+
+There are two Stan roles in the workflow:
+
+1. Prior sampling (fixed_param): each agent’s parameters are drawn from explicit priors, creating heterogeneity across matches.
+2. Posterior inference: we fit an interpretable WSLS policy model to generated action sequences, producing posterior “policy signatures”.
+
+A mid-game role swap (Matcher ↔ Mismatcher) is used as a diagnostic: role sensitivity is treated as a cognitive signature, not just “performance”.
+
+## Game and protocol
+
+- Repeated Matching Pennies for `T=60` trials per match.
+- Player A starts as Matcher (first half), then becomes Mismatcher (second half). Player B has the opposite roles each trial.
+- Payoff is zero-sum: win = +1, loss = −1 (also tracked as win rate).
+
+## Strategies
+
+- StanRandom: draw a bias `p ~ Beta(2,2)` via Stan fixed_param, then play action 1 with probability `p` every trial.
+- WSLS (Win–Stay / Lose–Shift): draw `(p_repeat_win, p_repeat_loss, lapse)` via Stan; follow WSLS rule with a lapse mixture toward random responding.
+- k-ToM-ish: draw `(alpha, beta, lapse)` via Stan; maintain beliefs about opponent action rate and choose a (noisy) best response, with a shallow “k-level” strategic blend.
+
+## Results
+
+### Fig 1 — Matchup performance with uncertainty intervals
+
+```{r}
+knitr::include_graphics("outputs/figs/fig1_matchups.png")
+```
+
+### Fig 2 — Role swap swing
+
+```{r}
+knitr::include_graphics("outputs/figs/fig2_role_swing.png")
+```
+
+### Fig 3 — Posterior policy signatures (WSLS policy fit)
+
+```{r}
+knitr::include_graphics("outputs/figs/fig3_policy_posteriors.png")
+```
+
+### Fig 4 — Payoff distributions
+
+```{r}
+knitr::include_graphics("outputs/figs/fig4_payoff_distribution.png")
+```
+
+## Key tables (from saved outputs)
+
+```{r}
+library(readr)
+library(dplyr)
+
+matchup_sum <- read_csv("outputs/data/matchup_summary.csv", show_col_types = FALSE)
+swing_sum   <- read_csv("outputs/data/role_swing_summary.csv", show_col_types = FALSE)
+policy_sum  <- read_csv("outputs/data/policy_summary.csv", show_col_types = FALSE)
+
+matchup_sum %>%
+  arrange(desc(mean)) %>%
+  head(9)
+```
+
+```{r}
+swing_sum %>% arrange(desc(mean))
+```
+
+```{r}
+policy_sum %>% arrange(strategy, variable)
+```
+
+## One-sentence conclusion
+
+Across repeated Matching Pennies, strategies differ not only in expected pay-off but in role sensitivity; fitting an interpretable WSLS policy model shows distinct posterior signatures (win-stay/lose-shift strength vs lapse/noise), linking tournament performance to cognitive mechanism.

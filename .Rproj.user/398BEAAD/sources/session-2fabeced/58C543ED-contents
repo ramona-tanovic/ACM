@@ -1,0 +1,16 @@
+// stan/priors_random.stan
+// -----------------------------------------------------------------------------
+// Prior sampler for StanRandom in fixed_param mode.
+// Draws one parameter per iteration:
+//   p ~ Beta(a, b)
+// -----------------------------------------------------------------------------
+
+data {
+  real<lower=0> a;
+  real<lower=0> b;
+}
+
+generated quantities {
+  real<lower=0,upper=1> p;
+  p = beta_rng(a, b);
+}

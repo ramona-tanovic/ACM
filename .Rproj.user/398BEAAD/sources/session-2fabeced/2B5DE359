@@ -1,0 +1,32 @@
+{
+    "id": "2B5DE359",
+    "path": "~/ACM/assignment1/assignment1.qmd",
+    "project_path": "assignment1/assignment1.qmd",
+    "type": "quarto_markdown",
+    "hash": "898634823",
+    "contents": "",
+    "dirty": false,
+    "created": 1771350659330.0,
+    "source_on_save": false,
+    "relative_order": 2,
+    "properties": {
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "114,23",
+        "scrollLine": "99",
+        "rmdVisualMode": "false",
+        "rmdVisualCollapsedChunks": "",
+        "rmdVisualModeLocation": "4750:4815",
+        "rmdVisualWrapConfigured": "true",
+        "docOutlineVisible": "1",
+        "ignored_words": "perseveration,exploitability\n"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1771353324,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1771353324837,
+    "read_only": false,
+    "read_only_alternatives": []
+}

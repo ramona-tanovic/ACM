@@ -1,0 +1,69 @@
+#!/usr/bin/env Rscript
+# assignment1/run_all.R
+# -----------------------------------------------------------------------------
+# One script to run the full Assignment 1 pipeline:
+#   1) simulate repeated Matching Pennies with a mid-game role swap
+#   2) compare two strategies: WSLS vs k-ToM
+#   3) quantify uncertainty with bootstrapping
+#   4) produce four figures, including an interpretation plot (Fig 3)
+#
+# Run from repo root:
+#   Rscript assignment1/run_all.R
+# -----------------------------------------------------------------------------
+
+# --- setup -------------------------------------------------------------------
+setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+
+# --- renv --------------------------------------------------------------------
+#renv::status() # Check if renv is active and up to date
+#renv::restore() # Restore packages from renv.lock (if it exists)
+#renv::snapshot() # Update renv.lock with any changes to installed packages
+
+# --- Packages ----------------------------------------------------------------
+# renv solves it
+
+# --- Source code --------------------------------------------------------------
+source(file.path("R", "config.R"))
+source(file.path("R", "strategies.R"))
+source(file.path("R", "game.R"))
+source(file.path("R", "bootstrap.R"))
+source(file.path("R", "tournament.R"))
+source(file.path("R", "plots.R"))
+
+set.seed(1) # For reproducibility of the whole pipeline (including bootstrapping)
+
+# --- 1) Tournament ------------------------------------------------------------
+message("\n=== Running tournament ===")
+res <- run_tournament(
+  strategies = STRATEGIES,
+  n_sims = N_SIMS,
+  T = T_TRIALS,
+  seed = SEED
+)
+
+matches <- res$matches
+players <- res$players
+
+readr::write_csv(matches, file.path(OUT_DATA_DIR, "matches.csv"))
+readr::write_csv(players, file.path(OUT_DATA_DIR, "players.csv"))
+
+# --- 2) Bootstrap summaries ---------------------------------------------------
+message("\n=== Bootstrapping uncertainty intervals ===")
+matchup_sum <- summarise_matchups(matches, R = BOOT_R, level = CI_LEVEL, seed = SEED)
+role_sum    <- summarise_role_advantage(players, R = BOOT_R, level = CI_LEVEL, seed = SEED)
+sig_sum     <- summarise_repeat_signature(players, R = BOOT_R, level = CI_LEVEL, seed = SEED)
+
+readr::write_csv(matchup_sum, file.path(OUT_DATA_DIR, "matchup_summary.csv"))
+readr::write_csv(role_sum,    file.path(OUT_DATA_DIR, "role_advantage_summary.csv"))
+readr::write_csv(sig_sum,     file.path(OUT_DATA_DIR, "repeat_signature_summary.csv"))
+
+# --- 3) Figures ---------------------------------------------------------------
+message("\n=== Saving figures (1–4) ===")
+plot_fig1_matchups(matchup_sum, file.path(OUT_FIG_DIR, "fig1_matchups.png"))
+plot_fig2_role_advantage(role_sum, file.path(OUT_FIG_DIR, "fig2_role_advantage.png"))
+plot_fig3_repeat_signature(sig_sum, file.path(OUT_FIG_DIR, "fig3_repeat_signature.png"))
+plot_fig4_payoff_distribution(matches, file.path(OUT_FIG_DIR, "fig4_payoff_distribution.png"))
+
+message("\nDone. Outputs written to:")
+message(" - ", OUT_DATA_DIR)
+message(" - ", OUT_FIG_DIR)

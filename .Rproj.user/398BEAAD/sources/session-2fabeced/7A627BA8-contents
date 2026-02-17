@@ -1,0 +1,55 @@
+# Assignment 1 — Matching Pennies tournament + Stan interpretation
+
+Goal
+You will simulate repeated Matching Pennies with a mid-game role swap (Matcher ↔ Mismatcher), compare strategies with uncertainty intervals across many simulations, and then fit an interpretable Stan policy model to generated behavior to connect “what happened” to parameters.
+
+What you get out
+- Fig 1: Tournament matchups (mean payoff for A vs B with bootstrap CI)
+- Fig 2: Role-swap swing (how performance changes after the role swap)
+- Fig 3: Stan posterior “policy signature” (WSLS parameters fitted to generated sequences)
+- Fig 4: Payoff distributions (variance across simulations is visible)
+
+Folder map
+- `run_all.R` runs everything end-to-end.
+- `assignment1.qmd` is the report (Quarto) that includes the figures and key tables.
+- `R/` contains the R functions (simulation, tournament, bootstrap, plotting).
+- `stan/` contains Stan programs:
+  - `priors_random.stan`, `priors_wsls.stan`, `priors_ktom.stan` (fixed_param priors)
+  - `wsls_policy.stan` (posterior inference model)
+
+Prerequisites
+1) R (>= 4.2) and RStudio (optional but easiest).
+2) Quarto (only needed if you want to render the `.qmd` report).
+3) CmdStan + cmdstanr
+   In R:
+   - install.packages("cmdstanr", repos = c("https://mc-stan.org/r-packages/", getOption("repos")))
+   - cmdstanr::install_cmdstan()   # installs CmdStan (can take a bit the first time)
+
+4) R packages (installed automatically by `run_all.R` if missing):
+   - dplyr, tidyr, purrr, readr, ggplot2, posterior, cmdstanr
+
+Run everything
+From the repository root (terminal):
+- `Rscript assignment1/run_all.R`
+
+Or from RStudio:
+- Open `assignment1/run_all.R` and click “Source”.
+
+Outputs are written to:
+- `assignment1/outputs/data/`
+- `assignment1/outputs/figs/`
+
+Render the report (optional)
+From `assignment1/`:
+- `quarto render assignment1.qmd`
+
+If something fails
+- Most issues are CmdStan toolchain issues. In R, run:
+  - cmdstanr::check_cmdstan_toolchain(fix = TRUE)
+- Then rerun `run_all.R`.
+
+Tuning runtime
+- In `R/config.R`, you can reduce:
+  - `N_SIMS` (tournament simulations per pairing)
+  - `S_FIT` (number of sequences used for policy fitting)
+  - Stan sampling iterations for the policy model

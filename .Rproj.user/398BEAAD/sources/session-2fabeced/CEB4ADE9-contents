@@ -1,0 +1,8 @@
+parameters {
+  real<lower=0,upper=1> eta;            // forgetting / learning rate
+  real<lower=0,upper=0.3> lapse;        // lapse to random
+}
+model {
+  eta ~ beta(2, 8);     // encourages small-ish learning rate (bounded memory)
+  lapse ~ beta(1, 12);
+}

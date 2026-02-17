@@ -1,0 +1,82 @@
+# Assignment 1 — Matching Pennies (tournament driven by Stan models)
+
+This folder implements Matching Pennies under the course protocol:
+- 30 trials, then **role swap**, then 30 more (60 total).
+- Pay-offs: +1 if your role condition is satisfied (**Matcher**: same action; **Hider**: different action), otherwise −1.
+
+## What “tournament on Stan models” means here
+
+Each strategy is treated as a **parametric cognitive policy**.
+We use **Stan (cmdstanr)** to sample plausible parameter values (from priors) for each agent.
+Then the tournament runs by spawning new agents whose behaviour is generated using those Stan-sampled parameters.
+
+Additionally, we fit a simple Stan policy model to the simulated sequences to obtain interpretable posterior summaries.
+
+## Strategies (3)
+
+1) **Random(0.5)** — no parameters, no memory.
+2) **WSLS (Stan-parametric)** — repeat-after-win and repeat-after-loss probabilities + lapse.
+3) **ForgetfulBias (Stan-parametric)** — forgetting rate `eta` + lapse (tracks opponent bias with bounded memory).
+
+## Requirements
+
+R packages:
+- `tidyverse`
+- `patchwork`
+- `knitr`
+- `cmdstanr`
+- `posterior` (usually installed with cmdstanr)
+
+If using `renv` at repo root:
+
+```r
+install.packages("renv")
+renv::restore()
+```
+
+If **not** using renv:
+
+```r
+install.packages(c("tidyverse", "patchwork", "knitr"))
+install.packages("cmdstanr", repos = c("https://mc-stan.org/r-packages/", getOption("repos")))
+```
+
+CmdStan (required, one-time):
+
+```r
+cmdstanr::install_cmdstan()
+```
+
+## Run everything
+
+From inside `assignment1/`:
+
+```r
+source("run_all.R")
+```
+
+Outputs:
+- `data/processed/trials.csv`
+- `data/processed/summary_final.csv`
+- `data/processed/summary_blocks.csv`
+- `data/processed/stan_prior_draws_wsls.csv`
+- `data/processed/stan_prior_draws_bias.csv`
+- `data/processed/stan_policy_summary.csv`
+- `figs/mean_cum_payoff.png` (dashed line at role swap)
+- `figs/block_heatmap.png`
+- `figs/final_heatmap.png`
+- `figs/final_distribution.png`
+- `figs/stan_prior_params.png`
+- `figs/stan_policy_params.png`
+
+## Files
+
+- `R/strategies.R` — strategies as agent objects (WSLS/Bias parameters sampled from Stan draws)
+- `R/game.R` — game loop + payoffs + role swap
+- `R/tournament.R` — tournament runner (many simulated matches)
+- `R/plotting.R` — plots for the report
+- `R/stan_priors.R` — Stan prior sampling + plotting
+- `R/stan_fit.R` — Stan model fit to sequences + plotting
+- `stan/` — Stan models
+- `assignment1.qmd` — the written report (Quarto)
+- `run_all.R` — end-to-end pipeline

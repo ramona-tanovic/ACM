@@ -1,0 +1,66 @@
+library(dplyr)
+library(ggplot2)
+
+# Sample parameter draws from Stan priors (no data).
+# These draws are used to spawn agents in the tournament.
+
+sample_prior_draws <- function(stan_file, vars, n_draws = 1000, seed = 1) {
+  if (!requireNamespace("cmdstanr", quietly = TRUE)) {
+    stop("cmdstanr is required.")
+  }
+  if (!requireNamespace("posterior", quietly = TRUE)) {
+    stop("posterior is required.")
+  }
+  if (is.null(cmdstanr::cmdstan_path()) || cmdstanr::cmdstan_path() == "") {
+    stop("CmdStan not installed. Run cmdstanr::install_cmdstan().")
+  }
+  
+  model <- cmdstanr::cmdstan_model(stan_file)
+  
+  fit <- model$sample(
+    data = list(),
+    seed = seed,
+    chains = 1,
+    iter_warmup = 0,
+    iter_sampling = n_draws,
+    fixed_param = TRUE,
+    refresh = 0
+  )
+  
+  draws <- posterior::as_draws_df(fit$draws(vars))
+  as.data.frame(draws) %>%
+    dplyr::select(dplyr::all_of(vars)) %>%
+    dplyr::slice_head(n = n_draws)
+}
+
+summarise_draws <- function(draws_df, label) {
+  draws_df %>%
+    tidyr::pivot_longer(everything(), names_to = "param", values_to = "value") %>%
+    group_by(param) %>%
+    summarise(
+      mean = mean(value),
+      q5 = quantile(value, 0.05),
+      q95 = quantile(value, 0.95),
+      .groups = "drop"
+    ) %>%
+    mutate(model = label)
+}
+
+plot_prior_params <- function(wsls_draws, bias_draws) {
+  d <- bind_rows(
+    summarise_draws(wsls_draws, "WSLS prior"),
+    summarise_draws(bias_draws, "ForgetfulBias prior")
+  ) %>%
+    mutate(param = factor(param, levels = unique(param)))
+
+  ggplot(d, aes(x = model, y = mean, ymin = q5, ymax = q95)) +
+    geom_pointrange() +
+    facet_wrap(~ param, scales = "free_y") +
+    theme_classic() +
+    labs(
+      x = NULL,
+      y = "Mean and 90% interval",
+      title = "Stan prior draws used to spawn tournament agents",
+      subtitle = "Each simulated agent samples its parameters from these priors"
+    )
+}

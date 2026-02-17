@@ -1,0 +1,167 @@
+---
+title: "Assignment 1 — Matching Pennies: WSLS vs k-ToM-inspired belief learning"
+author: "Ramona"
+format: html
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+## What you should get from this report
+
+This assignment asks for two things: (i) two plausible strategies for repeated Matching Pennies, and (ii) a simulation + visualization pipeline in a version-controlled repository.
+
+The main goal here is not only "who wins". It is to connect observed behavior to *mechanistic* claims under realistic cognitive constraints.
+
+Course inspiration (protocol, strategies, constraints): https://fusaroli.github.io/AdvancedCognitiveModeling2023/
+
+## Game and protocol
+
+- Repeated Matching Pennies for **T = 60** trials.
+- Each trial, one player is the **Matcher** (wants actions to match) and the other is the **Mismatcher** (wants actions to differ).
+- After **30 trials** roles swap.
+
+Why the role swap matters cognitively:
+
+A final pay-off collapses behaviour into one number. The mid-game role swap changes the reward mapping (match vs mismatch), which tests whether a strategy represents task structure and adapts when contingencies flip. That is a cognitive signature, not only “performance.”
+
+## Strategy 1: WSLS (Win–Stay / Lose–Shift)
+
+WSLS is a minimal, cognitively cheap strategy:
+
+- After a win: repeat previous action (stay)
+- After a loss: switch action (shift)
+
+We implement WSLS probabilistically to encode cognitive constraints:
+
+- `p_repeat_win`: how strongly the agent repeats after a win (perseveration / “win-stay”)
+- `p_repeat_loss`: how strongly the agent repeats after a loss (failure to shift)
+- `lapse`: random responding (errors / distraction)
+
+Formal diagram:
+
+```{mermaid}
+flowchart TD
+  A[Trial t] --> B{t == 1?}
+  B -->|yes| C[Choose 0/1 with 0.5]
+  B -->|no| D{Won at t-1?}
+  D -->|win| E[Repeat with p_repeat_win]
+  D -->|loss| F[Repeat with p_repeat_loss]
+  E --> G[Otherwise switch]
+  F --> G
+  G --> H{Lapse?}
+  H -->|yes| I[Random 0/1]
+  H -->|no| J[Use intended action]
+  J --> K[Store last action + last outcome]
+  I --> K
+```
+
+## Strategy 2: k-ToM-inspired belief learning (interpretable)
+
+In the course notes, Theory of Mind models are about explicitly modelling what the opponent will do.
+
+To keep the model simple and interpretable (Assignment 1 scope), we use a k-ToM-*inspired* belief-learning strategy:
+
+- Maintain a belief `belief = P(opponent plays 1)`
+- Update belief with a delta rule (learning rate `alpha`)
+- Choose a role-dependent best response:
+  - Matcher: match the likely opponent action
+  - Mismatcher: mismatch it
+- Add cognitive noise via `beta` (decision sharpness) and `lapse` (random errors)
+
+Parameters map cleanly to constraints:
+
+- `alpha`: recency weighting (memory limitation)
+- `beta`: decision noise (graded vs deterministic responding)
+- `lapse`: occasional random choices (errors)
+
+Formal diagram:
+
+```{mermaid}
+flowchart TD
+  A[Initialize belief = 0.5] --> B[Trial t]
+  B --> C[Compute best response given role]
+  C --> D[Soft choice via beta]
+  D --> E{Lapse?}
+  E -->|yes| F[Random 0/1]
+  E -->|no| G[Sample action]
+  F --> H[Observe opponent action]
+  G --> H
+  H --> I[Update belief: belief <- belief + alpha*(opp - belief)]
+  I --> B
+```
+
+## Where Stan is used (and why it is not bolted-on)
+
+Stan plays two essential roles:
+
+1) **Generative priors for agent heterogeneity** (fixed_param). Each simulated agent draws its parameters from explicit priors declared in Stan.
+
+2) **Posterior inference for interpretation**, following the “simulate → fit → interpret” workflow. We fit hierarchical Stan models back to simulated sequences and check parameter recovery.
+
+## Results
+
+### Fig 1 — Tournament performance
+
+```{r}
+knitr::include_graphics("outputs/figs/fig1_matchups.png")
+```
+
+Interpretation: this is the coarse behavioral result (mean payoff with uncertainty). It answers “who tends to exploit whom,” but does not explain why.
+
+### Fig 2 — Role sensitivity (Matcher advantage)
+
+```{r}
+knitr::include_graphics("outputs/figs/fig2_role_advantage.png")
+```
+
+Interpretation: the role swap creates a contingency flip. A role-sensitive strategy should show a different payoff profile as Matcher vs Mismatcher.
+
+### Fig 3 — Main interpretation figure (Chapter-5 style): posterior + recovery
+
+This is the key “mechanism” figure.
+
+- Top panels: posterior densities for a few example subjects with the true generating value (dashed line).
+- Bottom panels: recovery scatter (true value vs posterior mean ± 95% interval).
+
+```{r}
+knitr::include_graphics("outputs/figs/fig3_interpretation_combined.png")
+```
+
+What you conclude from this plot:
+
+- The fitted parameters are meaningful (they recover what generated the behavior).
+- WSLS parameters capture reinforcement-like repetition tendencies; belief-model parameters capture memory (alpha) and graded choice (beta).
+
+### Fig 4 — Payoff distributions (variance)
+
+```{r}
+knitr::include_graphics("outputs/figs/fig4_payoff_distribution.png")
+```
+
+Interpretation: means can hide instability. Distributions show robustness/variance.
+
+### LOO model comparison (table + dot)
+
+We fit both models to both datasets and compare out-of-sample predictive fit (LOO).
+
+```{r}
+library(readr)
+loo_tbl <- read_csv("outputs/data/loo_comparison_table.csv", show_col_types = FALSE)
+loo_tbl
+```
+
+```{r}
+knitr::include_graphics("outputs/figs/fig5_loo_dot.png")
+```
+
+Interpretation: WSLS should fit best on WSLS-generated behavior; belief model should fit best on belief-generated behavior. This makes the “competing cognitive hypotheses” comparison explicit.
+
+## Link to repository
+
+https://github.com/ramona-tanovic/ACM.git
+
+## Short conclusion template
+
+WSLS and k-ToM-inspired belief learning can differ not only in average payoff, but in role sensitivity and in parameter-level signatures under Stan model fits; parameter recovery and LOO comparisons show that the fitted mechanisms map onto cognitive constraints (perseveration, memory limitation, and errors) rather than being descriptive-only.

@@ -1,0 +1,29 @@
+// stan/priors_ktom.stan
+// -----------------------------------------------------------------------------
+// Prior sampler for a lightweight k-ToM-ish agent in fixed_param mode.
+// Draws per iteration:
+//   alpha ~ Beta(a_alpha, b_alpha)          (belief update strength in (0,1))
+//   beta  ~ LogNormal(mu_log_beta, sigma)   (inverse temperature > 0)
+//   lapse ~ Beta(a_lapse, b_lapse)          (random responding mixture)
+// -----------------------------------------------------------------------------
+
+data {
+  real<lower=0> a_alpha;
+  real<lower=0> b_alpha;
+
+  real mu_log_beta;
+  real<lower=0> sigma_log_beta;
+
+  real<lower=0> a_lapse;
+  real<lower=0> b_lapse;
+}
+
+generated quantities {
+  real<lower=0,upper=1> alpha;
+  real<lower=0> beta;
+  real<lower=0,upper=1> lapse;
+
+  alpha = beta_rng(a_alpha, b_alpha);
+  beta  = lognormal_rng(mu_log_beta, sigma_log_beta);
+  lapse = beta_rng(a_lapse, b_lapse);
+}

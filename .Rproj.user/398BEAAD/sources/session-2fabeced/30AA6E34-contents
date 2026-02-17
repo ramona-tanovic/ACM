@@ -1,0 +1,58 @@
+# Assignment 1 — Matching Pennies (minimal + reproducible)
+
+Implements **Matching Pennies** under the course protocol:
+
+- 30 trials, then **role swap**, then 30 more (60 total).
+- Payoffs: +1 if your role condition is satisfied (**Matcher**: same action; **Hider**: different action), otherwise −1.
+
+Strategies implemented (3)
+1) **Random(0.5)**: choose 0/1 with 50/50 probability each trial.
+2) **WSLS** (Win–Stay Lose–Shift): repeat last action after a win, switch after a loss (1-step memory).
+3) **ForgetfulBias**: track opponent’s tendency to play “1” using a single running estimate with forgetting, then best-respond by role.
+
+## Quick start (recommended)
+
+From inside `assignment1/` in RStudio:
+
+```r
+source("run_all.R")
+```
+
+Outputs:
+- CSVs in `data/processed/`:
+  - `trials.csv` (trial-level)
+  - `summary_final.csv` (total payoff over 60 trials)
+  - `summary_blocks.csv` (block-wise totals: trials 1–30 vs 31–60)
+- Figures in `figs/`:
+  - `mean_cum_payoff.png` (includes a vertical marker at the role swap)
+  - `block_heatmap.png` (separate block totals for each matchup)
+  - `final_heatmap.png`, `final_distribution.png`
+- Renders `assignment1.qmd` to HTML if Quarto is available.
+
+## Reproducibility (packages)
+
+If this repo is part of a larger `ACM` repo with `renv` at the root:
+
+```r
+install.packages("renv")
+renv::restore()
+```
+
+Then run the script above.
+
+If you are *not* using `renv`, install the needed packages:
+
+```r
+install.packages(c("tidyverse", "here", "patchwork", "quarto"))
+```
+
+(Quarto the system install may still be required for rendering the `.qmd`.)
+
+## Files
+
+- `R/strategies.R` — strategy objects (`init()`, `act()`, `learn()`)
+- `R/game.R` — game loop + payoffs + role swap
+- `R/tournament.R` — repeated simulations across all strategy pairs
+- `R/plotting.R` — plotting used by the report
+- `assignment1.qmd` — the written report (Quarto)
+- `run_all.R` — runs everything end-to-end

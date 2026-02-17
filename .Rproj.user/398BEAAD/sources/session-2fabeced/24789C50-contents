@@ -1,0 +1,82 @@
+---
+title: "Assignment 1 — Matching Pennies"
+format: html
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+## Run simulations + generate figures
+
+```{r}
+source("run_all.R")
+```
+
+## Figures
+
+### Mean payoff per trial (Agent A)
+
+```{r}
+knitr::include_graphics("outputs/figures/mean_payoff_over_trials.png")
+```
+
+### Mean cumulative payoff (Agent A)
+
+```{r}
+knitr::include_graphics("outputs/figures/cumulative_payoff.png")
+```
+
+### Final payoff distribution (Agent A)
+
+```{r}
+knitr::include_graphics("outputs/figures/final_payoff_boxplot.png")
+```
+
+### Strategy summary (as Agent A)
+
+```{r}
+knitr::include_graphics("outputs/figures/strategy_summary.png")
+```
+
+## Strategy diagrams
+
+### WSLS
+
+```{mermaid}
+flowchart LR
+  S((Start)) --> A1[Choose a1 randomly]
+  A1 --> O[Observe outcome]
+  O -->|win| Stay[Repeat previous action]
+  O -->|loss| Shift[Switch action]
+  Stay --> O
+  Shift --> O
+```
+
+### Memory (exponential forgetting)
+
+```{mermaid}
+flowchart LR
+  B0[Initialize belief m1 = 0.5] --> D[Choose action using m_t and role]
+  D --> O[Observe opponent choice]
+  O --> U[Update m_{t+1} = m_t + alpha*(o_t - m_t)]
+  U --> D
+```
+
+### Mixture inference (ambitious)
+
+```{mermaid}
+flowchart LR
+  I[Initialize model weights] --> P[Predict p(o_t=1) under each model]
+  P --> M[Mixture p_mix = Σ w_i p_i]
+  M --> A[Choose best response (soft)]
+  A --> Obs[Observe opponent choice]
+  Obs --> Upd[Update weights + model states]
+  Upd --> P
+```
+
+## Repository link
+
+Replace with your GitHub/GitLab URL:
+
+- Repo: <https://github.com/yourname/yourrepo>

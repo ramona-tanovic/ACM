@@ -1,0 +1,56 @@
+---
+title: "opponent_models"
+output: html_document
+---
+
+```{r}
+# Opponent models for MixtureInference.
+
+opp_model_random_beta <- function(a0 = 1, b0 = 1, rho = 0.98) {
+  state <- list(a = a0, b = b0, a0 = a0, b0 = b0, rho = rho)
+  list(
+    name = "OppRandomBeta",
+    init = function() { state$a <- state$a0; state$b <- state$b0; invisible(state) },
+    predict_p1 = function(role_self, role_opp) clip_prob(state$a / (state$a + state$b)),
+    learn = function(opp_action, own_action, role_self, role_opp, payoff_opp) {
+      state$a <- state$a0 + state$rho * (state$a - state$a0) + opp_action
+      state$b <- state$b0 + state$rho * (state$b - state$b0) + (1 - opp_action)
+      invisible(state)
+    }
+  )
+}
+
+opp_model_wsls <- function(lapse = 0.10) {
+  state <- list(prev_a = NA_integer_, prev_win = NA_integer_, lapse = lapse)
+  list(
+    name = "OppWSLS",
+    init = function() { state$prev_a <- NA_integer_; state$prev_win <- NA_integer_; invisible(state) },
+    predict_p1 = function(role_self, role_opp) {
+      if (is.na(state$prev_a)) return(0.5)
+      target <- if (state$prev_win == 1L) state$prev_a else (1L - state$prev_a)
+      clip_prob((1 - state$lapse) * as.numeric(target == 1L) + state$lapse * 0.5)
+    },
+    learn = function(opp_action, own_action, role_self, role_opp, payoff_opp) {
+      state$prev_a <- opp_action
+      state$prev_win <- as.integer(payoff_opp == 1L)
+      invisible(state)
+    }
+  )
+}
+
+opp_model_memory <- function(alpha = 0.15, tau = 8, lapse = 0.05) {
+  state <- list(m = 0.5, alpha = alpha, tau = tau, lapse = lapse)
+  list(
+    name = "OppMemory",
+    init = function() { state$m <- 0.5; invisible(state) },
+    predict_p1 = function(role_self, role_opp) {
+      x <- if (role_opp == "matcher") (state$m - 0.5) else (0.5 - state$m)
+      clip_prob((1 - state$lapse) * sigmoid(state$tau * x) + state$lapse * 0.5)
+    },
+    learn = function(opp_action, own_action, role_self, role_opp, payoff_opp) {
+      state$m <- state$m + state$alpha * (own_action - state$m)
+      invisible(state)
+    }
+  )
+}
+```
