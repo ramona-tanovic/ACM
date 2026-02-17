@@ -1,0 +1,44 @@
+# run_all.R
+# End-to-end pipeline:
+# 1) run tournament simulations
+# 2) save CSV artifacts
+# 3) save figures used in the report
+# 4) render the Quarto report
+
+# set working directory
+setwd(here::here("assignment1"))
+
+source("R/utils.R")
+source("R/strategies.R")
+source("R/tournament.R")
+source("R/plotting.R")
+
+ensure_dir(here("assignment1/data/processed"))
+ensure_dir(here("assignment1/figs"))
+
+set.seed(1)
+
+strategies <- default_strategies()
+
+# Adjust n_sims upward if you want smoother plots (at the cost of runtime)
+n_sims <- 300
+res <- run_tournament(strategies, n_sims = n_sims, n_block = 30, seed = 1)
+
+write_csv(res$trials, here("assignment1/data/processed/trials.csv"))
+write_csv(res$summary_final, here("assignment1/data/processed/summary_final.csv"))
+
+p1 <- plot_mean_cum_payoff(res$trials)
+ggsave(here("assignment1/figs/mean_cum_payoff.png"), p1, width = 12, height = 9, dpi = 200)
+
+p2 <- plot_final_heatmap(res$summary_final)
+ggsave(here("assignment1/figs/final_heatmap.png"), p2, width = 9, height = 6, dpi = 200)
+
+p3 <- plot_final_distribution(res$summary_final)
+ggsave(here("assignment1/figs/final_distribution.png"), p3, width = 9, height = 6, dpi = 200)
+
+# Render report
+if (requireNamespace("quarto", quietly = TRUE)) {
+  quarto::quarto_render("assignment1.qmd")
+} else {
+  message("Package 'quarto' not found. Install it or render manually from RStudio.")
+}
