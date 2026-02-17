@@ -1,4 +1,0 @@
-"0","library(dplyr)"
-"2","Fejl: package or namespace load failed for ‘dplyr’ in loadNamespace(i, c(lib.loc, .libPaths()), versionCheck = vI[[i]]):
- navnerum ‘rlang’ 1.1.4 er indlæst, men >= 1.1.7 er krævet
-"
