@@ -1,0 +1,173 @@
+---
+title: "Assignment 2 — Stan model fitting and validation for Matching Pennies"
+author:
+  - "Anton Nymann"
+format:
+  html:
+    toc: true
+    number-sections: true
+    embed-resources: trueue
+  pdf:
+    toc: true
+    number-sections: true
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+## What this report contains
+
+This document follows the workflow from *simulation → model fitting*.
+
+1) A single-agent cognitive model for Matching Pennies (WSLS + lapse + bias) specified in Stan.
+2) A Stan implementation.
+3) Model quality checks:
+   - prior predictive vs posterior predictive,
+   - prior → posterior update checks,
+   - basic sampling diagnostics.
+4) Parameter recovery:
+   - why we do it,
+   - how it is done here,
+   - how recovery changes with the number of trials,
+   - the role of priors (a small sensitivity illustration).
+
+## Model description
+
+### Data and task
+
+On each trial *t*, the agent chooses an action `choice[t] ∈ {0,1}` and the opponent chooses `opp[t] ∈ {0,1}`.
+The agent's reward depends on whether they win on **match** or **mismatch**:
+
+- if `win_on_match = 1`: reward is 1 when `choice[t] == opp[t]`.
+- if `win_on_match = 0`: reward is 1 when `choice[t] != opp[t]`.
+
+### Cognitive mechanism
+
+The cognitive assumption is a minimal *reinforcement-like* heuristic: **Win-Stay / Lose-Shift**.
+
+- After a win, repeat the previous action with probability `p_win`.
+- After a loss, repeat the previous action with probability `p_loss`.
+
+This is combined with two cognitive constraints / imperfections:
+
+1) **Lapses** (`lapse`): on each trial, with probability `lapse`, the agent ignores WSLS.
+2) **Bias** (`bias`): when lapsing (and for the first trial), the agent chooses action 1 with probability `bias`.
+
+Together this yields a simple, interpretable model with four probabilities:
+
+- `p_win` (win-stay strength)
+- `p_loss` (lose-stay strength; WSLS implies this tends to be < 0.5)
+- `lapse` (noise / attention / motor slips)
+- `bias` (baseline preference)
+
+### Likelihood (informal)
+
+- Trial 1: `choice[1] ~ Bernoulli(bias)`
+- Trials 2..T:
+  - compute whether trial t−1 was a win/loss from `(choice[t-1], opp[t-1], win_on_match)`
+  - build the WSLS probability of choosing 1 (`p_core`) from `p_win` or `p_loss`
+  - mix with a lapse component:
+
+`P(choice[t]=1) = (1-lapse) * p_core + lapse * bias`
+
+### Priors
+
+All parameters are probabilities, so Beta priors are used. In the pipeline the defaults are:
+
+- `p_win  ~ Beta(1, 1)`
+- `p_loss ~ Beta(1, 1)`
+- `lapse  ~ Beta(1, 10)` (weak preference for lower lapse rates)
+- `bias   ~ Beta(1, 1)`
+
+These hyperparameters are passed as data to allow prior sensitivity checks.
+
+## Stan model
+
+The Stan model is implemented in `assignment2/stan/wsls_single_agent.stan`.
+
+```{r}
+#| results: asis
+stan_lines <- readLines(file.path("stan", "wsls_single_agent.stan"))
+cat("```stan
+", paste(stan_lines, collapse = "
+"), "```", sep = "")
+```
+
+## Model quality checks
+
+This section reports checks that answer: “is the model coherent *before* seeing the data?” and “does it reproduce key patterns *after* fitting?”
+
+### Prior → posterior update
+
+If the posterior looks identical to the prior, the data did not inform the parameter.
+If the posterior is meaningfully narrower and/or shifted, the model is learning from data.
+
+![](outputs/figs/figA_prior_posterior_update.png)
+
+### Prior predictive vs posterior predictive
+
+Here the summary statistic is a repeat-rate computed separately after wins and after losses.
+
+- Prior predictive: what the model expects before seeing data.
+- Posterior predictive: what the model expects after updating with the observed data.
+
+![](outputs/figs/figB_prior_vs_posterior_predictive.png)
+
+### Posterior summary table
+
+```{r}
+readr::read_csv(file.path("outputs", "tables", "tableA_posterior_summary.csv"))
+```
+
+## Parameter recovery
+
+### Why parameter recovery?
+
+Parameter recovery tests **internal validity** / **identifiability**: if we simulate data from known parameter values and then fit the model back to that data, can we recover the true values?
+
+If recovery fails even on simulated data, then interpretation of fitted parameters on real data is risky.
+
+### How it is done here
+
+For each trial length `T` (multiple settings), the pipeline:
+
+1) samples “true” parameters from the same priors used by the model,
+2) simulates a dataset from those parameters,
+3) fits the Stan model,
+4) extracts posterior means and credible intervals,
+5) evaluates recovery quality (scatter, and CI coverage).
+
+### Recovery results
+
+![](outputs/figs/figC_recovery_scatter.png)
+
+### How many trials are needed?
+
+A practical way to answer “how many trials” is to look at whether credible intervals have reasonable coverage and whether posterior means track the diagonal (true=estimated).
+
+![](outputs/figs/figD_recovery_coverage.png)
+
+### Role of priors (small sensitivity illustration)
+
+This figure illustrates that priors can materially affect predictions and posteriors, especially with shorter sequences.
+Here we strengthen the prior belief that lapse rates are small.
+
+![](outputs/figs/figE_prior_sensitivity_lapse.png)
+
+## Optional extensions
+
+### Multilevel model
+
+A hierarchical extension lets each individual have their own `(p_win, p_loss, lapse, bias)` drawn from group-level distributions.
+This is useful if you fit multiple agents (e.g., students dataset) and want partial pooling.
+
+### Empirical datasets
+
+You can fit a provided dataset by loading it in `run_all.R` and constructing the columns:
+
+- `choice` (agent action 0/1)
+- `opp` (opponent action 0/1)
+- `win_on_match` (game role)
+
+Then build `stan_data <- build_stan_data(...)` and fit as in the simulated example.
