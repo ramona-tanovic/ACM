@@ -2,15 +2,16 @@
 .Rhistory
 .RData
 .Ruserdata
+.Rproj.user
 
 # Quarto
 /.quarto/
 /assignment1/.quarto/
 /assignment1/_site/
-/assignment1/assignment1_file/*
+/assignment1/assignment1_file/libs/*
 /assignment2/.quarto/
 /assignment2/_site/
-/assignment2/assignment1_file/*
+/assignment2/assignment1_file/libs/*
 
 
 # CmdStan build artifacts
