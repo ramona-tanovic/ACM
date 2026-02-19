@@ -1,8 +1,0 @@
-"0","clip_prob <- function(p, eps = 1e-6) pmax(pmin(p, 1 - eps), eps)"
-"0","sigmoid <- function(x) 1 / (1 + exp(-x))"
-"0",""
-"0","normalize_log_weights <- function(logw) {"
-"0","  m <- max(logw)"
-"0","  w <- exp(logw - m)"
-"0","  w / sum(w)"
-"0","}"

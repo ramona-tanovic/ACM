@@ -1,7 +1,0 @@
-"0","library(readr)"
-"0","library(dplyr)"
-"0",""
-"0","# Optional (only needed for this file)"
-"0","library(cmdstanr)"
-"2","Fejl i library(cmdstanr) : der er ingen pakke med navn ‘cmdstanr’
-"

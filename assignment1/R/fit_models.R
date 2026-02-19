@@ -5,21 +5,22 @@
 #
 # Why fit both models to both datasets?
 # - It makes the comparison explicit: which model explains which behaviour?
-# - It turns the assignment into "competing cognitive hypotheses" rather than
-#   a single-score tournament.
+# - It allows us to check if the fitting procedure can recover the true parameters (for the "correct" model).
+#
 # -----------------------------------------------------------------------------
 
 prepare_stan_data <- function(sim_list) {
   # sim_list must contain: a_mat, b_mat, role_mat
   list(
-    S = nrow(sim_list$a_mat),
-    T = ncol(sim_list$a_mat),
-    a = sim_list$a_mat,
-    b = sim_list$b_mat,
-    roleA = sim_list$role_mat
+    S = nrow(sim_list$a_mat), # number of subjects
+    T = ncol(sim_list$a_mat), # number of trials
+    a = sim_list$a_mat, # action sequence (0/1) 
+    b = sim_list$b_mat, # outcome sequence (0/1)
+    roleA = sim_list$role_mat # role of player A (0/1)
   )
 }
 
+# Extract log-likelihood matrix from a fitted model, for use in loo.
 summarise_subject_params <- function(draws_df, param_regex, true_values = NULL) {
   # draws_df is a draws_df (or data.frame) with columns like p_repeat_win[1]
   if (!requireNamespace("posterior", quietly = TRUE)) stop("Need posterior.")
@@ -38,7 +39,7 @@ summarise_subject_params <- function(draws_df, param_regex, true_values = NULL) 
   # Extract subject index from param name, e.g. p_repeat_win[12]
   long$subject <- as.integer(gsub("^.*\\[(\\d+)\\]$", "\\1", long$param))
 
-  summ <- long |>
+  summ <- long |> # group by subject and compute mean and 95% credible interval
     dplyr::group_by(subject) |>
     dplyr::summarise(
       mean = mean(value),
@@ -54,6 +55,7 @@ summarise_subject_params <- function(draws_df, param_regex, true_values = NULL) 
   summ
 }
 
+# Extract log-likelihood matrix from a fitted model, for use in loo.
 compute_loo <- function(fit) {
   if (!requireNamespace("loo", quietly = TRUE)) stop("Need loo.")
   ll <- extract_log_lik_matrix(fit)

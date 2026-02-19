@@ -8,7 +8,7 @@
 // -----------------------------------------------------------------------------
 
 data {
-  int<lower=1> S;
+  int<lower=1> S; 
   int<lower=2> T;
 
   array[S, T] int<lower=0, upper=1> a;

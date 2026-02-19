@@ -3,7 +3,6 @@
 // Fixed-parameter Stan model used ONLY to sample heterogeneous WSLS agents.
 //
 // Why Stan here?
-// - The course emphasises making your assumptions explicit.
 // - Declaring priors in Stan gives a clean Bayesian *generative* story.
 // - In fixed_param mode, Stan simply draws from these priors each iteration.
 // -----------------------------------------------------------------------------

@@ -2,7 +2,8 @@
 # -----------------------------------------------------------------------------
 # Parameter recovery + interpretation figures.
 #
-# Chapter-5 inspiration (course notes):
+# Why parameter recovery? Because we want to show that our parameters are meaningful.
+# How to do that:
 # - simulate data from a model
 # - fit the model back to the data
 # - check whether we recover the known parameters

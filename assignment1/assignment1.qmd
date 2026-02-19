@@ -1,269 +1,401 @@
 ---
 title: "Assignment 1 — Matching Pennies: WSLS vs k-ToM-inspired belief learning"
-author: "Ramona"
-format: html
+author: "Amalie Overgaard Stevnhøj Pedersen, Gréta Harsányi, Mads Munch Mikkelsen, Ramona Tanović"
+format:
+  html:
+    toc: true
+    number-sections: true
 execute:
   echo: false
   warning: false
   message: false
 ---
 
-## The Assignment Concept
+## What this assignment does
 
-This assignment asks for two things: (i) describe two plausible strategies for repeated Matching Pennies, and (ii) provide a simulation + visualization pipeline in a version-controlled repository.
+This document (i) describes two cognitively plausible strategies for repeated Matching Pennies, (ii) formalises them as executable rule-based models (diagrams + equations), and (iii) evaluates their behaviour in simulation. Finally, it treats the strategies as mechanistic statistical models and checks whether they are distinguishable when fit to data (here: synthetic data).
 
-The goal is not only "who wins". The goal is to connect behaviour to mechanistic claims under cognitive constraints (limited memory, perseveration, errors/noise), and to show those mechanisms are identifiable via model fitting.
+Repository (all code, simulations, figures, reproducibility):
 
-## Game and protocol
+- https://github.com/ramona-tanovic/ACM.git
 
-- Repeated Matching Pennies for **T = 60** trials.
-- Each trial, one player is the **Matcher** (wants actions to match) and the other is the **Mismatcher** (wants actions to differ).
-- After **30 trials** roles swap.
+The relevant folder is `assignment1/`.
 
-Why the role swap matters cognitively:
+## Data + figures used in this write-up
 
-A final pay-off collapses behaviour into one number. The mid-game role swap changes the reward mapping (match vs mismatch). This tests whether a strategy represents task contingencies and re-maps behaviour when contingencies flip. That is a cognitive signature, not just “performance.”
-
-A useful reference point: in the ideal mixed-strategy equilibrium of Matching Pennies, expected pay-off is 0. Persistent deviations from 0 indicate exploitability under cognitive constraints (finite memory, noise, imperfect opponent modelling).
-
-## Strategy 1: WSLS (Win–Stay / Lose–Shift)
-
-WSLS is a minimal, cognitively cheap strategy:
-
-- After a win: repeat previous action (stay)
-- After a loss: switch action (shift)
-
-We implement WSLS probabilistically to encode cognitive constraints:
-
-- `p_repeat_win`: how strongly the agent repeats after a win (perseveration / “win-stay”)
-- `p_repeat_loss`: how strongly the agent repeats after a loss (failure to shift)
-- `lapse`: random responding (errors / distraction)
-
-Cognitive constraints (operational):
-
-- Memory requirement: last action (1 bit) + last outcome (1 bit).
-- Computation: one conditional probability lookup (“win?”) and a possible flip.
-- Errors: implemented as `lapse`, mixing toward random responding.
-
-Formalisation (diagram):
-
-```{mermaid}
-flowchart TD
-  S["Start trial t"] --> F{First trial?}
-
-  F -- Yes --> I["Choose action randomly (0/1)"]
-  I --> ACT["Play action"]
-
-  F -- No --> E["Evaluate previous outcome"]
-  E --> W{Won previous trial?}
-
-  W -- Yes --> PW["Plan: repeat previous action with pWin"]
-  W -- No --> PL["Plan: repeat previous action with pLoss"]
-
-  PW --> L{Lapse?}
-  PL --> L
-
-  L -- Yes --> R["Override: choose randomly (0/1)"]
-  L -- No --> K["Keep planned action"]
-
-  R --> ACT
-  K --> ACT
-```
-
-## Strategy 2: k-ToM-inspired belief learning (interpretable)
-
-In the course notes, Theory of Mind models are about explicitly modelling what the opponent will do.
-
-To keep the model simple and interpretable (Assignment 1 scope), we use a k-ToM-inspired belief-learning strategy:
-
-- Maintain a belief \(b_t = P(\text{opponent plays }1)\)
-- Update belief with a delta rule (learning rate \(\alpha\)):
-  - \(b_{t+1} = b_t + \alpha\, (\text{opp}_t - b_t)\)
-- Choose a role-dependent best response:
-  - Matcher: match the likely opponent action
-  - Mismatcher: mismatch it
-- Add cognitive noise via \(\beta\) (decision sharpness) and `lapse` (random errors)
-
-Parameters map cleanly to constraints:
-
-- `alpha`: recency weighting / memory limitation (how quickly beliefs forget older evidence)
-- `beta`: graded vs deterministic choice (noise / stochasticity)
-- `lapse`: occasional random choices (errors / distraction)
-
-Cognitive constraints (operational):
-
-- Memory requirement: one scalar belief state \(b_t\) plus knowledge of current role.
-- Computation: update a single belief and compute a best response given role.
-- Errors: implemented via \(\beta\) and `lapse`.
-
-Formalisation (diagram):
-
-```{mermaid}
-flowchart TD
-  S["Start trial t"] --> B["Belief b: P(opponent=1)"]
-  B --> ROLE{Role?}
-
-  ROLE -- Matcher --> VM["Compute v from belief (match)"]
-  ROLE -- Mismatcher --> VX["Compute v from belief (mismatch)"]
-
-  VM --> P["Compute p(action=1) from v, beta, lapse"]
-  VX --> P
-
-  P --> A["Sample action"]
-  A --> O["Observe opponent action"]
-  O --> U["Update belief with alpha"]
-  U --> N["Next trial"]
-```
-
-## 5W1H: Where Stan is used (and why it is not bolted-on)
-
-Who uses Stan?
-
-- The modeller uses Stan to make assumptions explicit and to connect simulated behavior back to interpretable parameters.
-
-What is Stan used for?
-
-- (1) Sampling heterogeneous agent parameters from explicit priors (generative story).
-- (2) Fitting hierarchical models to action sequences to infer cognitive parameters (interpretation).
-- (3) Comparing competing cognitive hypotheses with out-of-sample predictive fit (LOO).
-
-When is Stan used?
-
-- Before simulation: to draw agent parameters from priors (fixed_param).
-- After simulation: to fit models back to the generated sequences (MCMC), then compute LOO.
-
-Where is Stan in the pipeline?
-
-- `assignment1/stan/` contains the generative prior models and the two hierarchical fit models.
-
-Why is this necessary?
-
-- Because strategy descriptions are not enough: we also need to show that the mechanisms are (i) identifiable from finite noisy data and (ii) predictively distinct.
-- Parameter recovery (simulate → fit → recover true values) is a direct check that “the parameters mean what we claim they mean.”
-- LOO makes the two strategies explicit competing generative hypotheses, not just a tournament.
-
-Priors used (summary)
-
-| Component | Parameter | Prior (generative) | Prior (fit, population-level) |
-|---|---|---|---|
-| WSLS | p_repeat_win | Beta(8, 2) | mu_win ~ Normal(0, 1.5) on logit scale |
-| WSLS | p_repeat_loss | Beta(2, 8) | mu_loss ~ Normal(0, 1.5) on logit scale |
-| WSLS | lapse | Beta(2, 10) | mu_lapse ~ Normal(-2, 1.5) on logit scale |
-| Belief | alpha | Beta(2, 2) | mu_alpha ~ Normal(0, 1.5) on logit scale |
-| Belief | beta | LogNormal(0, 0.5) | mu_log_beta ~ Normal(0, 1.5) on log scale |
-| Belief | lapse | Beta(2, 10) | mu_lapse ~ Normal(-2, 1.5) on logit scale |
-
-## Results
-
-Results logic:
-
-We separate three questions so each figure has a clear purpose.
-
-1) Performance: who tends to exploit whom (with uncertainty)?
-2) Role sensitivity: what happens when contingencies flip at trial 30?
-3) Mechanism: do fitted parameters recover the intended cognitive signatures, and do the models predict differently out of sample?
-
-### Fig 1 — Tournament performance (mean payoff + uncertainty)
+This document reads the CSV outputs produced by `assignment1/run_all.R` and inserts the key numbers directly into the text (so the narrative stays consistent if you re-run the pipeline).
 
 ```{r}
-knitr::include_graphics("outputs/figs/fig1_matchups.png")
-```
-
-Interpretation:
-
-- This gives a coarse behavioral summary: expected payoff (with bootstrap uncertainty) for each matchup.
-- Because Matching Pennies has a mixed-strategy equilibrium with expected payoff 0, systematic deviations from 0 indicate exploitability under constraints (finite memory, noise, imperfect modelling).
-
-Expected pattern:
-
-- If belief learning exploits WSLS regularities, belief-vs-WSLS should deviate from 0 in belief’s favor (within uncertainty).
-- Self-play near 0 is consistent with symmetry and limited exploitability (given noise/lapse).
-
-### Fig 2 — Role swap diagnostic (contingency remapping)
-
-```{r}
-knitr::include_graphics("outputs/figs/fig2_role_advantage.png")
-```
-
-Interpretation:
-
-- The swap at trial 30 changes the utility mapping (match vs mismatch). This tests contingency re-mapping: does the policy adapt when “what counts as success” flips?
-- WSLS is outcome-reactive: it conditions on win/loss, not on role explicitly. After the swap, WSLS can look superficially stable because it continues to follow “repeat after win, switch after loss,” even though the meaning of “win” changed.
-- The belief learner explicitly uses the role in its decision rule (best response depends on Matcher vs Mismatcher). A systematic role advantage (or a sharper post-swap shift) therefore supports the claim that it represents task contingencies, not only recent outcomes.
-- If the plotted role advantage is near 0 with narrow intervals, the conclusion is not “no effect,” but “roles are handled symmetrically / adaptation is fast under these parameters and noise.”
-
-Optional diagnostic note:
-
-- Adaptation lag could be quantified by restricting the analysis to a small window right after trial 30 (e.g., trials 31–35). The current summary already captures the direction and uncertainty of remapping.
-
-### Fig 3 — Main interpretation figure (Chapter-5 style): posterior + recovery
-
-This is the key mechanism figure.
-
-- Top panels: posterior densities for a few example subjects with the true generating value (dashed line).
-- Bottom panels: recovery scatter (true value vs posterior mean ± 95% interval).
-
-```{r}
-knitr::include_graphics("outputs/figs/fig3_interpretation_combined.png")
-```
-
-Interpretation:
-
-- Identifiability: posteriors concentrate around the true generating values for key parameters, implying the mechanisms are recoverable from sequences of length T=60 (given these priors).
-- Cognitive signatures:
-  - WSLS: `p_repeat_win` vs `p_repeat_loss` expresses reinforcement-like “stay/shift” asymmetry; `lapse` captures errors.
-  - Belief learning: `alpha` expresses memory/recency weighting; `beta` expresses graded choice; `lapse` captures errors.
-
-What would count as a failure:
-
-- Broad posteriors that do not concentrate near the true values (or intervals that systematically miss) would suggest the parameters are not identified at this trial length, or that priors dominate the likelihood.
-
-Note on recovery plots:
-
-- Recovery scatter is most diagnostic when true values span a wide range. If true values are clustered (by design or by narrow priors), posterior concentration in the density panels carries more interpretive weight than the slope of the recovery scatter.
-
-### Fig 4 — Payoff distributions (variance / robustness)
-
-```{r}
-knitr::include_graphics("outputs/figs/fig4_payoff_distribution.png")
-```
-
-Interpretation:
-
-- Mean pay-offs can hide instability. Distributions show whether a strategy’s advantage is robust or driven by a few extreme simulations.
-
-### LOO model comparison (table + dot)
-
-We fit both hierarchical models to both datasets and compare out-of-sample predictive fit (LOO).
-
-Interpretation:
-
-- Reported quantities are differences in expected log predictive density (elpd) with a standard error (SE).
-- If an elpd difference is small relative to its SE, evidence for a better model is weak at this sample size / noise level.
-
-Decision rule (heuristic):
-
-- Evidence is “clear” when |elpd_diff| is meaningfully larger than its SE (a common practical heuristic is about 2×SE); otherwise the comparison is ambiguous at this T and noise level.
-
-```{r}
+library(dplyr)
 library(readr)
-loo_tbl <- read_csv("outputs/data/loo_comparison_table.csv", show_col_types = FALSE)
-loo_tbl
+library(tidyr)
+
+FIG_DIR  <- "outputs/figs"
+DATA_DIR <- "outputs/data"
+
+# Robust file resolver: when knitting from different working directories,
+# look in a few plausible locations before failing.
+resolve_path <- function(rel_dir, fname) {
+  candidates <- c(
+    file.path(rel_dir, fname),                 # default relative path
+    fname,                                     # current folder
+    file.path("assignment1", rel_dir, fname),  # knit from repo root
+    file.path("..", rel_dir, fname)            # knit from subfolder
+  )
+  hit <- candidates[file.exists(candidates)][1]
+  if (is.na(hit)) stop("Missing file: ", fname, " (looked in: ", paste(candidates, collapse = ", "), ")")
+  hit
+}
+
+fig_path  <- function(x) resolve_path(FIG_DIR,  x)
+data_path <- function(x) resolve_path(DATA_DIR, x)
+
+include_if_exists <- function(path) {
+  if (file.exists(path)) knitr::include_graphics(path) else cat("Missing figure:", path)
+}
+
+# Read pipeline outputs
+trials   <- read_csv(data_path("trials.csv"), show_col_types = FALSE)
+matches  <- read_csv(data_path("matches.csv"), show_col_types = FALSE)
+players  <- read_csv(data_path("players.csv"), show_col_types = FALSE)
+loo_dot  <- read_csv(data_path("loo_dot.csv"), show_col_types = FALSE)
+loo_tbl  <- read_csv(data_path("loo_comparison_table.csv"), show_col_types = FALSE)
+
+T_trials   <- max(trials$trial)
+swap_trial <- T_trials / 2
+n_sims     <- matches |> count(pairing) |> pull(n) |> min()  # per pairing
+pairings   <- sort(unique(matches$pairing))
+
+# Simple bootstrap mean CI helper (kept local to the document for clarity)
+boot_mean_ci <- function(x, R = 2000, level = 0.95, seed = 1) {
+  set.seed(seed)
+  x <- x[is.finite(x)]
+  n <- length(x)
+  boots <- replicate(R, mean(sample(x, size = n, replace = TRUE)))
+  alpha <- (1 - level) / 2
+  c(mean = mean(x),
+    lo = unname(quantile(boots, alpha)),
+    hi = unname(quantile(boots, 1 - alpha)))
+}
+
+# Match-level summaries: "who beats whom?"
+match_ci <- matches |>
+  group_by(pairing) |>
+  summarise(
+    boot = list(boot_mean_ci(total_payoff_A, R = 2000, seed = 1)),
+    mean = boot[[1]]["mean"], lo = boot[[1]]["lo"], hi = boot[[1]]["hi"],
+    mean_first  = mean(payoff_first_A),
+    mean_second = mean(payoff_second_A),
+    mean_swing  = mean(swing_A),
+    .groups = "drop"
+  ) |>
+  select(-boot) |>
+  arrange(desc(mean))
+
+# Role effect summary: "does role matter?"
+role_ci <- players |>
+  group_by(strategy) |>
+  summarise(
+    boot = list(boot_mean_ci(role_advantage, R = 2000, seed = 2)),
+    mean = boot[[1]]["mean"], lo = boot[[1]]["lo"], hi = boot[[1]]["hi"],
+    .groups = "drop"
+  ) |>
+  select(-boot) |>
+  arrange(desc(mean))
+
+# Behavioural signature (mechanistic check):
+# Repeat-after-win vs repeat-after-loss rates (computed from transition counts).
+safe_div <- function(a, b) ifelse(b > 0, a / b, NA_real_)
+
+sig_df <- players |>
+  mutate(
+    p_rep_win_first  = safe_div(rep_win_first,  n_win_first),
+    p_rep_loss_first = safe_div(rep_loss_first, n_loss_first),
+    p_rep_win_second = safe_div(rep_win_second, n_win_second),
+    p_rep_loss_second= safe_div(rep_loss_second,n_loss_second)
+  ) |>
+  group_by(strategy) |>
+  summarise(
+    rep_after_win  = mean(c(p_rep_win_first,  p_rep_win_second),  na.rm = TRUE),
+    rep_after_loss = mean(c(p_rep_loss_first, p_rep_loss_second), na.rm = TRUE),
+    .groups = "drop"
+  )
+
+# LOO dot plot numbers
+loo_key <- loo_dot |>
+  mutate(ci_lo = elpd_diff - 2*se, ci_hi = elpd_diff + 2*se)
+wsls_gen   <- loo_key |> filter(dataset == "WSLS-generated")
+belief_gen <- loo_key |> filter(dataset == "Belief-generated")
 ```
 
+## The game and protocol
+
+Matching Pennies is a two-player, zero-sum game. On each trial both players choose an action (Left/Right). One player is the **Matcher** (wins if actions match), the other is the **Mismatcher** (wins if actions differ).
+
+In the repeated task, roles swap halfway through the block. That swap is cognitively informative: it tests whether a strategy merely reacts to reinforcement history or whether it represents the *current contingency* (what counts as “good” right now).
+
+In the simulations used for the figures in this document, there are \(T = \)`r T_trials` trials per match, and the role swap is at trial \(`r swap_trial`\).
+
+```{mermaid}
+flowchart LR
+  A[Player A] -->|action a_t| G((Game))
+  B[Player B] -->|action b_t| G
+  G --> O{Match? a_t==b_t}
+  O -->|Yes| R1[If A is Matcher: A wins<br/>If A is Mismatcher: A loses]
+  O -->|No| R2[If A is Matcher: A loses<br/>If A is Mismatcher: A wins]
+```
+
+## Strategy 1: Win–Stay / Lose–Shift (WSLS)
+
+### Intuition
+
+WSLS is a classic reinforcement heuristic:
+
+- If the previous action led to a win, repeat it.
+- If it led to a loss, switch.
+
+It is cognitively plausible because it only requires one-step memory and a simple if/else rule. It does not need a representation of the opponent or of the game structure.
+
+### Formalisation
+
+Let \(a_{t-1}\) be the previous action and \(w_{t-1}\in\{0,1\}\) indicate whether the agent won last trial.
+
+Parameters:
+- \(p_{\text{repeat|win}}\): repeat after win
+- \(p_{\text{repeat|loss}}\): repeat after loss (often low in WSLS)
+- \(\ell\): lapse/noise: with probability \(\ell\), choose randomly
+
+```{mermaid}
+flowchart TD
+  S0["Observe last outcome w(t-1) and last action a(t-1)"] --> L{"Lapse? (prob = l)"}
+  L -->|Yes| R["Choose action uniformly at random"]
+  L -->|No| W{"Was last trial a win?"}
+  W -->|Win| P1["Repeat a(t-1) with prob p_repeat_win<br/>else switch"]
+  W -->|Loss| P2["Repeat a(t-1) with prob p_repeat_loss<br/>else switch"]
+```
+
+### Cognitive constraints (WSLS)
+
+WSLS is a bounded-memory, low-computation control policy. It is a plausible “default heuristic” when agents cannot or do not build an internal model of the opponent or task.
+
+The key limitation is that it cannot condition explicitly on the match/mismatch goal. It only changes by accumulating reinforcement feedback, so any re-mapping after the role swap is indirect and may lag.
+
+## Strategy 2: k-ToM-inspired belief learning (kToM)
+
+### Intuition
+
+This strategy maintains a simple belief about the opponent’s action tendency and updates that belief from observations. It is “k-ToM-inspired” in that the agent behaves as if the opponent has a stable (possibly biased) policy and tries to exploit it.
+
+It remains cognitively constrained: rather than storing the full history, it compresses experience into a single belief state and updates incrementally.
+
+### Formalisation
+
+Let \(p_t = P(b_t = 1)\) be the belief that the opponent will choose action 1.
+
+Belief update:
+\[
+p_{t+1} = (1-\alpha)\,p_t + \alpha\,b_t,
+\]
+where \(0<\alpha<1\) controls recency weighting.
+
+Choice uses an inverse temperature \(\beta\) (sharper exploitation for larger \(\beta\)) and a lapse \(\ell\). Crucially, action selection is conditioned on role:
+- Matcher: choose the action that matches the predicted opponent action
+- Mismatcher: choose the opposite action
+
+```{mermaid}
+flowchart TD
+  O1["Observe opponent action b(t)"] --> U["Update belief p(t+1) = (1-alpha)*p(t) + alpha*b(t)"]
+  U --> R{"Role at trial t+1?"}
+  R -->|Matcher| D1["Choose to match predicted opponent<br/>strength set by beta"]
+  R -->|Mismatcher| D2["Choose to mismatch predicted opponent<br/>strength set by beta"]
+  D1 --> L{"Lapse? (prob = l)"}
+  D2 --> L
+  L -->|Yes| Rand["Choose randomly"]
+  L -->|No| Act["Take action a(t+1)"]
+```
+
+### Cognitive constraints (kToM)
+
+This model adds a minimal internal state (belief \(p_t\)). That increases cognitive demands relative to WSLS but still reflects bounded resources: the entire history is summarised by one scalar belief, updated with a single learning-rate parameter.
+
+Because the goal is represented explicitly (match vs mismatch), the model can re-map actions when roles swap without waiting for long reinforcement transients.
+
+## Implementation logic: executable rule-based models
+
+Both strategies are implemented as “model objects”: a parameter vector plus a choice rule and an update rule. This is the core modelling move in rule-based cognitive modelling: the hypothesis is expressed as an executable procedure that generates behaviour, not just as a verbal description.
+
+## Simulation design
+
+We run a tournament of pairings (each strategy against itself and against the other). For each pairing we simulate \(`r n_sims`\) matches. To capture heterogeneity, each simulated agent samples parameters from the Stan prior and plays one match with those parameters.
+
+The pipeline saves:
+- trial-level output (`trials.csv`) for learning curves,
+- match-level summaries (`matches.csv`) for tournament outcomes,
+- per-player summaries (`players.csv`) for role effects and behavioural signatures,
+- LOO outputs (`loo_dot.csv`, `loo_comparison_table.csv`) for model comparison.
+
+## Results: behaviour in tournament simulations
+
+### Fig 0 — Trial dynamics and the role swap
+
 ```{r}
-knitr::include_graphics("outputs/figs/fig5_loo_dot.png")
+include_if_exists(fig_path("fig0_dynamics.png"))
 ```
 
 Interpretation:
 
-- Whether the WSLS model predicts WSLS-generated behavior better than the belief model, and vice versa.
-- This turns “two strategies” into explicit competing generative hypotheses, beyond payoff.
+This figure shows mean cumulative payoff for player A over trials (ribbon = ±1 SE). The dashed vertical line marks the role swap.
 
-## Link to repository
+What this plot is for (cognitively):
+- It reveals *dynamics*: does an advantage emerge early, slowly, or only after the swap?
+- It shows *adaptation costs*: if a strategy needs reinforcement to re-tune after the swap, you often see a transient kink or change in slope around the swap.
+- It separates “overall win” from “how the win was achieved”.
 
-https://github.com/ramona-tanovic/ACM.git
+### Fig 1 — Tournament performance (who beats whom?)
 
-## Conclusion
+```{r}
+include_if_exists(fig_path("fig1_matchups.png"))
+```
 
-The role swap serves as a diagnostic manipulation: it separates strategies that merely react to outcomes (WSLS) from strategies that represent contingency structure (k-ToM-inspired belief learning). Stan is not an add-on here: hierarchical fits show that the intended parameters are identifiable from finite, noisy sequences (parameter recovery), and LOO formalizes whether the fitted mechanisms are predictively distinguishable beyond payoff summaries. Together, performance, role-swap diagnostics, and posterior signatures support an interpretation in terms of cognitive constraints (memory/recency, perseveration, and noise), rather than a purely descriptive tournament result.
+To make the figure interpretable as evidence, here are the exact mean payoffs and bootstrap 95% intervals (same summary the bars represent):
+
+```{r}
+match_ci |>
+  mutate(
+    mean = round(mean, 2),
+    lo = round(lo, 2),
+    hi = round(hi, 2),
+    mean_first = round(mean_first, 2),
+    mean_second = round(mean_second, 2),
+    mean_swing = round(mean_swing, 2)
+  ) |>
+  select(pairing, mean, lo, hi, mean_first, mean_second, mean_swing) |>
+  knitr::kable(
+    col.names = c("Pairing (A vs B)",
+                  "Mean payoff A",
+                  "CI low",
+                  "CI high",
+                  "Mean payoff (first half)",
+                  "Mean payoff (second half)",
+                  "Mean swing (second-first)"),
+    caption = "Tournament outcomes with bootstrap 95% intervals. Payoffs are for player A."
+  )
+```
+
+Interpretation:
+
+This is the headline “who exploits whom?” result. Mean payoff near 0 is what you expect when neither side has a stable advantage under bounded rationality and noise. Large positive or negative means indicate systematic exploitability.
+
+The cleanest asymmetry is in the cross-play between the two different strategies (kToM vs WSLS vs WSLS vs kToM). That is theoretically expected: a belief learner can exploit predictable reinforcement patterns, while WSLS does not represent the opponent.
+
+The “swing” column (second half minus first half) is a direct way to see whether the role swap changes who is advantaged within the same match, i.e., whether the strategy interaction depends on the current contingency.
+
+### Fig 2 — Role sensitivity (Matcher advantage)
+
+```{r}
+include_if_exists(fig_path("fig2_role_advantage.png"))
+```
+
+A compact numeric summary:
+
+```{r}
+role_ci |>
+  mutate(mean = round(mean, 3), lo = round(lo, 3), hi = round(hi, 3)) |>
+  knitr::kable(
+    col.names = c("Strategy", "Mean matcher advantage", "CI low", "CI high"),
+    caption = "Role sensitivity: payoff as Matcher minus payoff as Mismatcher (bootstrap 95% CI)."
+  )
+```
+
+Interpretation:
+
+This figure isolates the role manipulation. If a model represents the goal explicitly (match vs mismatch), you expect clearer and more systematic re-mapping across the swap. If a model is purely reinforcement-driven, role effects can be noisier and depend on how quickly the feedback loop re-stabilises.
+
+In these simulations, both strategies show wide uncertainty around the role effect. That is not surprising: Matching Pennies is balanced in expectation, and with lapses/noise, the “role advantage” can be small relative to match-to-match variability.
+
+### Behavioural signature check: does WSLS actually look like WSLS?
+
+A useful mechanistic sanity check is whether agents behave in a way that matches the verbal model description. WSLS should repeat more after wins than after losses.
+
+```{r}
+sig_df |>
+  mutate(across(c(rep_after_win, rep_after_loss), ~round(.x, 3))) |>
+  knitr::kable(
+    col.names = c("Strategy", "Repeat after win", "Repeat after loss"),
+    caption = "Behavioural signature: repeat probabilities estimated from transition counts."
+  )
+```
+
+Interpretation:
+
+If WSLS is implemented correctly and sampled from sensible priors, it should show a stronger “repeat after win” tendency than “repeat after loss”. The belief learner does not encode WSLS directly, so its repeat/shift pattern can look different and can vary with \(\alpha, \beta\), and lapse.
+
+### Fig 4 — Payoff distributions (variance, not only means) (optional)
+
+```{r}
+include_if_exists(fig_path("fig4_payoff_distribution.png"))
+```
+
+Interpretation:
+
+The bar plot compresses each pairing into a mean ± interval. The violin plot shows the full distribution of outcomes across simulations. This matters because two strategies can have similar mean performance but different risk profiles (stable vs high-variance). In cognitive terms, high variance can reflect sensitivity to early random events and lapses, not just “skill”.
+
+## Model fitting: can we identify the mechanisms?
+
+A mechanistic model should not only generate behaviour; it should also be distinguishable when fit to data. Here we fit both models to synthetic datasets generated by each strategy and compare them with approximate leave-one-out cross-validation (LOO).
+
+### Fig 5 — LOO model comparison
+
+```{r}
+include_if_exists(fig_path("fig5_loo_dot.png"))
+```
+
+Key numbers (ELPD difference = Belief − WSLS; bars are ±2 SE):
+
+- WSLS-generated data: \(\Delta\text{ELPD} =\) `r round(wsls_gen$elpd_diff, 2)` (SE = `r round(wsls_gen$se, 2)`, approx 95% range [`r round(wsls_gen$ci_lo, 2)`, `r round(wsls_gen$ci_hi, 2)`]).
+- Belief-generated data: \(\Delta\text{ELPD} =\) `r round(belief_gen$elpd_diff, 2)` (SE = `r round(belief_gen$se, 2)`, approx 95% range [`r round(belief_gen$ci_lo, 2)`, `r round(belief_gen$ci_hi, 2)`]).
+
+Interpretation:
+
+Positive differences mean the Belief model predicts better; negative means WSLS predicts better.
+
+The desirable pattern is “match the generator”: WSLS should win on WSLS-generated data, and Belief should win on Belief-generated data. When the interval includes 0, it indicates that the data horizon/noise makes discrimination difficult (a real identifiability issue rather than a coding bug).
+
+### Fig 3 — Posterior parameter interpretation (example subjects)
+
+```{r}
+# Prefer the combined interpretation figure if it exists; otherwise fall back to separate ones.
+combined <- fig_path("fig3_interpretation_combined.png")
+if (file.exists(combined)) {
+  include_if_exists(combined)
+} else {
+  include_if_exists(fig_path("fig3a_posteriors_wsls.png"))
+  include_if_exists(fig_path("fig3b_posteriors_belief.png"))
+}
+```
+
+Interpretation:
+
+Posterior densities show how the data constrain the cognitive parameters (learning rate, exploitation strength, perseveration, lapse). The dashed line is the true generating value (parameter recovery check).
+
+In Matching Pennies, perfect recovery is not expected in general: the equilibrium behaviour can look close to random, and with limited trials + lapse noise, multiple parameter settings can generate similar sequences. The correct conclusion is therefore about *which parameters are identifiable under the current design* and how uncertainty reflects cognitive ambiguity in the task.
+
+## Discussion (why these results make sense)
+
+WSLS and kToM-inspired belief learning make different cognitive commitments.
+
+WSLS is a bounded-memory reinforcement heuristic. It is plausible as a “cheap” strategy but it is systematically exploitable by opponents that can detect its regularities. It also has no explicit representation of the role contingency; it adapts only through feedback.
+
+The belief learner adds a small internal state (belief about the opponent) and explicit conditioning on the match/mismatch goal. This makes it more flexible around the role swap and better suited to exploiting predictable opponents, while still being cognitively constrained (compressed memory, incremental update, lapse noise).
+
+The core figures connect these commitments to observable signatures: (i) trial dynamics and swap adaptation, (ii) robust pairing differences across simulations, (iii) whether role matters systematically, and (iv) whether the two models are distinguishable in model comparison.
+
+## Reproducibility (how to run)
+
+From the `assignment1/` folder:
+
+```bash
+Rscript run_all.R
+```
+
+This generates the CSVs in `outputs/data/` and the figures in `outputs/figs/`, which this document loads.

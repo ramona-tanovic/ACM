@@ -7,11 +7,11 @@
 /.quarto/
 /assignment1/.quarto/
 /assignment1/_site/
-/assignment1/*.html
+/assignment1/assignment1_file/*
+/assignment2/.quarto/
+/assignment2/_site/
+/assignment2/assignment1_file/*
 
-# Outputs
-/assignment1/outputs/data/*
-/assignment1/outputs/figs/*
 
 # CmdStan build artifacts
 /assignment1/stan/*.hpp
@@ -19,3 +19,9 @@
 /assignment1/stan/*.so
 /assignment1/stan/*.dll
 /assignment1/stan/*.exe
+/assignment2/stan/*.hpp
+/assignment2/stan/*.o
+/assignment2/stan/*.so
+/assignment2/stan/*.dll
+/assignment2/stan/*.exe
+.Rproj.user

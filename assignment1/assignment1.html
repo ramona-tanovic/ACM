@@ -1,0 +1,925 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.8.25">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Amalie Overgaard Stevnhøj Pedersen, Gréta Harsányi, Mads Munch Mikkelsen, Ramona Tanović">
+
+<title>Assignment 1 — Matching Pennies: WSLS vs k-ToM-inspired belief learning</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="assignment1_files/libs/clipboard/clipboard.min.js"></script>
+<script src="assignment1_files/libs/quarto-html/quarto.js" type="module"></script>
+<script src="assignment1_files/libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="assignment1_files/libs/quarto-html/axe/axe-check.js" type="module"></script>
+<script src="assignment1_files/libs/quarto-html/popper.min.js"></script>
+<script src="assignment1_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="assignment1_files/libs/quarto-html/anchor.min.js"></script>
+<link href="assignment1_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="assignment1_files/libs/quarto-html/quarto-syntax-highlighting-7b89279ff1a6dce999919e0e67d4d9ec.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="assignment1_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="assignment1_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="assignment1_files/libs/bootstrap/bootstrap-9e3ffae467580fdb927a41352e75a2e0.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script src="assignment1_files/libs/quarto-diagram/mermaid.min.js"></script>
+<script src="assignment1_files/libs/quarto-diagram/mermaid-init.js"></script>
+<link href="assignment1_files/libs/quarto-diagram/mermaid.css" rel="stylesheet">
+
+
+</head>
+
+<body class="quarto-light">
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+<div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+  <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">Table of contents</h2>
+   
+  <ul>
+  <li><a href="#what-this-assignment-does" id="toc-what-this-assignment-does" class="nav-link active" data-scroll-target="#what-this-assignment-does"><span class="header-section-number">1</span> What this assignment does</a></li>
+  <li><a href="#data-figures-used-in-this-write-up" id="toc-data-figures-used-in-this-write-up" class="nav-link" data-scroll-target="#data-figures-used-in-this-write-up"><span class="header-section-number">2</span> Data + figures used in this write-up</a></li>
+  <li><a href="#the-game-and-protocol" id="toc-the-game-and-protocol" class="nav-link" data-scroll-target="#the-game-and-protocol"><span class="header-section-number">3</span> The game and protocol</a></li>
+  <li><a href="#strategy-1-winstay-loseshift-wsls" id="toc-strategy-1-winstay-loseshift-wsls" class="nav-link" data-scroll-target="#strategy-1-winstay-loseshift-wsls"><span class="header-section-number">4</span> Strategy 1: Win–Stay / Lose–Shift (WSLS)</a>
+  <ul class="collapse">
+  <li><a href="#intuition" id="toc-intuition" class="nav-link" data-scroll-target="#intuition"><span class="header-section-number">4.1</span> Intuition</a></li>
+  <li><a href="#formalisation" id="toc-formalisation" class="nav-link" data-scroll-target="#formalisation"><span class="header-section-number">4.2</span> Formalisation</a></li>
+  <li><a href="#cognitive-constraints-wsls" id="toc-cognitive-constraints-wsls" class="nav-link" data-scroll-target="#cognitive-constraints-wsls"><span class="header-section-number">4.3</span> Cognitive constraints (WSLS)</a></li>
+  </ul></li>
+  <li><a href="#strategy-2-k-tom-inspired-belief-learning-ktom" id="toc-strategy-2-k-tom-inspired-belief-learning-ktom" class="nav-link" data-scroll-target="#strategy-2-k-tom-inspired-belief-learning-ktom"><span class="header-section-number">5</span> Strategy 2: k-ToM-inspired belief learning (kToM)</a>
+  <ul class="collapse">
+  <li><a href="#intuition-1" id="toc-intuition-1" class="nav-link" data-scroll-target="#intuition-1"><span class="header-section-number">5.1</span> Intuition</a></li>
+  <li><a href="#formalisation-1" id="toc-formalisation-1" class="nav-link" data-scroll-target="#formalisation-1"><span class="header-section-number">5.2</span> Formalisation</a></li>
+  <li><a href="#cognitive-constraints-ktom" id="toc-cognitive-constraints-ktom" class="nav-link" data-scroll-target="#cognitive-constraints-ktom"><span class="header-section-number">5.3</span> Cognitive constraints (kToM)</a></li>
+  </ul></li>
+  <li><a href="#implementation-logic-executable-rule-based-models" id="toc-implementation-logic-executable-rule-based-models" class="nav-link" data-scroll-target="#implementation-logic-executable-rule-based-models"><span class="header-section-number">6</span> Implementation logic: executable rule-based models</a></li>
+  <li><a href="#simulation-design" id="toc-simulation-design" class="nav-link" data-scroll-target="#simulation-design"><span class="header-section-number">7</span> Simulation design</a></li>
+  <li><a href="#results-behaviour-in-tournament-simulations" id="toc-results-behaviour-in-tournament-simulations" class="nav-link" data-scroll-target="#results-behaviour-in-tournament-simulations"><span class="header-section-number">8</span> Results: behaviour in tournament simulations</a>
+  <ul class="collapse">
+  <li><a href="#fig-0-trial-dynamics-and-the-role-swap" id="toc-fig-0-trial-dynamics-and-the-role-swap" class="nav-link" data-scroll-target="#fig-0-trial-dynamics-and-the-role-swap"><span class="header-section-number">8.1</span> Fig 0 — Trial dynamics and the role swap</a></li>
+  <li><a href="#fig-1-tournament-performance-who-beats-whom" id="toc-fig-1-tournament-performance-who-beats-whom" class="nav-link" data-scroll-target="#fig-1-tournament-performance-who-beats-whom"><span class="header-section-number">8.2</span> Fig 1 — Tournament performance (who beats whom?)</a></li>
+  <li><a href="#fig-2-role-sensitivity-matcher-advantage" id="toc-fig-2-role-sensitivity-matcher-advantage" class="nav-link" data-scroll-target="#fig-2-role-sensitivity-matcher-advantage"><span class="header-section-number">8.3</span> Fig 2 — Role sensitivity (Matcher advantage)</a></li>
+  <li><a href="#behavioural-signature-check-does-wsls-actually-look-like-wsls" id="toc-behavioural-signature-check-does-wsls-actually-look-like-wsls" class="nav-link" data-scroll-target="#behavioural-signature-check-does-wsls-actually-look-like-wsls"><span class="header-section-number">8.4</span> Behavioural signature check: does WSLS actually look like WSLS?</a></li>
+  <li><a href="#fig-4-payoff-distributions-variance-not-only-means-optional" id="toc-fig-4-payoff-distributions-variance-not-only-means-optional" class="nav-link" data-scroll-target="#fig-4-payoff-distributions-variance-not-only-means-optional"><span class="header-section-number">8.5</span> Fig 4 — Payoff distributions (variance, not only means) (optional)</a></li>
+  </ul></li>
+  <li><a href="#model-fitting-can-we-identify-the-mechanisms" id="toc-model-fitting-can-we-identify-the-mechanisms" class="nav-link" data-scroll-target="#model-fitting-can-we-identify-the-mechanisms"><span class="header-section-number">9</span> Model fitting: can we identify the mechanisms?</a>
+  <ul class="collapse">
+  <li><a href="#fig-5-loo-model-comparison" id="toc-fig-5-loo-model-comparison" class="nav-link" data-scroll-target="#fig-5-loo-model-comparison"><span class="header-section-number">9.1</span> Fig 5 — LOO model comparison</a></li>
+  <li><a href="#fig-3-posterior-parameter-interpretation-example-subjects" id="toc-fig-3-posterior-parameter-interpretation-example-subjects" class="nav-link" data-scroll-target="#fig-3-posterior-parameter-interpretation-example-subjects"><span class="header-section-number">9.2</span> Fig 3 — Posterior parameter interpretation (example subjects)</a></li>
+  </ul></li>
+  <li><a href="#discussion-why-these-results-make-sense" id="toc-discussion-why-these-results-make-sense" class="nav-link" data-scroll-target="#discussion-why-these-results-make-sense"><span class="header-section-number">10</span> Discussion (why these results make sense)</a></li>
+  <li><a href="#reproducibility-how-to-run" id="toc-reproducibility-how-to-run" class="nav-link" data-scroll-target="#reproducibility-how-to-run"><span class="header-section-number">11</span> Reproducibility (how to run)</a></li>
+  </ul>
+</nav>
+</div>
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Assignment 1 — Matching Pennies: WSLS vs k-ToM-inspired belief learning</h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    <div>
+    <div class="quarto-title-meta-heading">Author</div>
+    <div class="quarto-title-meta-contents">
+             <p>Amalie Overgaard Stevnhøj Pedersen, Gréta Harsányi, Mads Munch Mikkelsen, Ramona Tanović </p>
+          </div>
+  </div>
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<section id="what-this-assignment-does" class="level2" data-number="1">
+<h2 data-number="1" class="anchored" data-anchor-id="what-this-assignment-does"><span class="header-section-number">1</span> What this assignment does</h2>
+<p>This document (i) describes two cognitively plausible strategies for repeated Matching Pennies, (ii) formalises them as executable rule-based models (diagrams + equations), and (iii) evaluates their behaviour in simulation. Finally, it treats the strategies as mechanistic statistical models and checks whether they are distinguishable when fit to data (here: synthetic data).</p>
+<p>Repository (all code, simulations, figures, reproducibility):</p>
+<ul>
+<li>https://github.com/ramona-tanovic/ACM.git</li>
+</ul>
+<p>The relevant folder is <code>assignment1/</code>.</p>
+</section>
+<section id="data-figures-used-in-this-write-up" class="level2" data-number="2">
+<h2 data-number="2" class="anchored" data-anchor-id="data-figures-used-in-this-write-up"><span class="header-section-number">2</span> Data + figures used in this write-up</h2>
+<p>This document reads the CSV outputs produced by <code>assignment1/run_all.R</code> and inserts the key numbers directly into the text (so the narrative stays consistent if you re-run the pipeline).</p>
+</section>
+<section id="the-game-and-protocol" class="level2" data-number="3">
+<h2 data-number="3" class="anchored" data-anchor-id="the-game-and-protocol"><span class="header-section-number">3</span> The game and protocol</h2>
+<p>Matching Pennies is a two-player, zero-sum game. On each trial both players choose an action (Left/Right). One player is the <strong>Matcher</strong> (wins if actions match), the other is the <strong>Mismatcher</strong> (wins if actions differ).</p>
+<p>In the repeated task, roles swap halfway through the block. That swap is cognitively informative: it tests whether a strategy merely reacts to reinforcement history or whether it represents the <em>current contingency</em> (what counts as “good” right now).</p>
+<p>In the simulations used for the figures in this document, there are (T = )100 trials per match, and the role swap is at trial (50).</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div>
+<p></p><figure class="figure"><p></p>
+<div>
+<pre class="mermaid mermaid-js">flowchart LR
+  A[Player A] --&gt;|action a_t| G((Game))
+  B[Player B] --&gt;|action b_t| G
+  G --&gt; O{Match? a_t==b_t}
+  O --&gt;|Yes| R1[If A is Matcher: A wins&lt;br/&gt;If A is Mismatcher: A loses]
+  O --&gt;|No| R2[If A is Matcher: A loses&lt;br/&gt;If A is Mismatcher: A wins]
+</pre>
+</div>
+<p></p></figure><p></p>
+</div>
+</div>
+</div>
+</section>
+<section id="strategy-1-winstay-loseshift-wsls" class="level2" data-number="4">
+<h2 data-number="4" class="anchored" data-anchor-id="strategy-1-winstay-loseshift-wsls"><span class="header-section-number">4</span> Strategy 1: Win–Stay / Lose–Shift (WSLS)</h2>
+<section id="intuition" class="level3" data-number="4.1">
+<h3 data-number="4.1" class="anchored" data-anchor-id="intuition"><span class="header-section-number">4.1</span> Intuition</h3>
+<p>WSLS is a classic reinforcement heuristic:</p>
+<ul>
+<li>If the previous action led to a win, repeat it.</li>
+<li>If it led to a loss, switch.</li>
+</ul>
+<p>It is cognitively plausible because it only requires one-step memory and a simple if/else rule. It does not need a representation of the opponent or of the game structure.</p>
+</section>
+<section id="formalisation" class="level3" data-number="4.2">
+<h3 data-number="4.2" class="anchored" data-anchor-id="formalisation"><span class="header-section-number">4.2</span> Formalisation</h3>
+<p>Let (a_{t-1}) be the previous action and (w_{t-1}{0,1}) indicate whether the agent won last trial.</p>
+<p>Parameters: - (p_{}): repeat after win - (p_{}): repeat after loss (often low in WSLS) - (): lapse/noise: with probability (), choose randomly</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div>
+<p></p><figure class="figure"><p></p>
+<div>
+<pre class="mermaid mermaid-js">flowchart TD
+  S0["Observe last outcome w(t-1) and last action a(t-1)"] --&gt; L{"Lapse? (prob = l)"}
+  L --&gt;|Yes| R["Choose action uniformly at random"]
+  L --&gt;|No| W{"Was last trial a win?"}
+  W --&gt;|Win| P1["Repeat a(t-1) with prob p_repeat_win&lt;br/&gt;else switch"]
+  W --&gt;|Loss| P2["Repeat a(t-1) with prob p_repeat_loss&lt;br/&gt;else switch"]
+</pre>
+</div>
+<p></p></figure><p></p>
+</div>
+</div>
+</div>
+</section>
+<section id="cognitive-constraints-wsls" class="level3" data-number="4.3">
+<h3 data-number="4.3" class="anchored" data-anchor-id="cognitive-constraints-wsls"><span class="header-section-number">4.3</span> Cognitive constraints (WSLS)</h3>
+<p>WSLS is a bounded-memory, low-computation control policy. It is a plausible “default heuristic” when agents cannot or do not build an internal model of the opponent or task.</p>
+<p>The key limitation is that it cannot condition explicitly on the match/mismatch goal. It only changes by accumulating reinforcement feedback, so any re-mapping after the role swap is indirect and may lag.</p>
+</section>
+</section>
+<section id="strategy-2-k-tom-inspired-belief-learning-ktom" class="level2" data-number="5">
+<h2 data-number="5" class="anchored" data-anchor-id="strategy-2-k-tom-inspired-belief-learning-ktom"><span class="header-section-number">5</span> Strategy 2: k-ToM-inspired belief learning (kToM)</h2>
+<section id="intuition-1" class="level3" data-number="5.1">
+<h3 data-number="5.1" class="anchored" data-anchor-id="intuition-1"><span class="header-section-number">5.1</span> Intuition</h3>
+<p>This strategy maintains a simple belief about the opponent’s action tendency and updates that belief from observations. It is “k-ToM-inspired” in that the agent behaves as if the opponent has a stable (possibly biased) policy and tries to exploit it.</p>
+<p>It remains cognitively constrained: rather than storing the full history, it compresses experience into a single belief state and updates incrementally.</p>
+</section>
+<section id="formalisation-1" class="level3" data-number="5.2">
+<h3 data-number="5.2" class="anchored" data-anchor-id="formalisation-1"><span class="header-section-number">5.2</span> Formalisation</h3>
+<p>Let (p_t = P(b_t = 1)) be the belief that the opponent will choose action 1.</p>
+<p>Belief update: [ p_{t+1} = (1-),p_t + ,b_t, ] where (0&lt;&lt;1) controls recency weighting.</p>
+<p>Choice uses an inverse temperature () (sharper exploitation for larger ()) and a lapse (). Crucially, action selection is conditioned on role: - Matcher: choose the action that matches the predicted opponent action - Mismatcher: choose the opposite action</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div>
+<p></p><figure class="figure"><p></p>
+<div>
+<pre class="mermaid mermaid-js">flowchart TD
+  O1["Observe opponent action b(t)"] --&gt; U["Update belief p(t+1) = (1-alpha)*p(t) + alpha*b(t)"]
+  U --&gt; R{"Role at trial t+1?"}
+  R --&gt;|Matcher| D1["Choose to match predicted opponent&lt;br/&gt;strength set by beta"]
+  R --&gt;|Mismatcher| D2["Choose to mismatch predicted opponent&lt;br/&gt;strength set by beta"]
+  D1 --&gt; L{"Lapse? (prob = l)"}
+  D2 --&gt; L
+  L --&gt;|Yes| Rand["Choose randomly"]
+  L --&gt;|No| Act["Take action a(t+1)"]
+</pre>
+</div>
+<p></p></figure><p></p>
+</div>
+</div>
+</div>
+</section>
+<section id="cognitive-constraints-ktom" class="level3" data-number="5.3">
+<h3 data-number="5.3" class="anchored" data-anchor-id="cognitive-constraints-ktom"><span class="header-section-number">5.3</span> Cognitive constraints (kToM)</h3>
+<p>This model adds a minimal internal state (belief (p_t)). That increases cognitive demands relative to WSLS but still reflects bounded resources: the entire history is summarised by one scalar belief, updated with a single learning-rate parameter.</p>
+<p>Because the goal is represented explicitly (match vs mismatch), the model can re-map actions when roles swap without waiting for long reinforcement transients.</p>
+</section>
+</section>
+<section id="implementation-logic-executable-rule-based-models" class="level2" data-number="6">
+<h2 data-number="6" class="anchored" data-anchor-id="implementation-logic-executable-rule-based-models"><span class="header-section-number">6</span> Implementation logic: executable rule-based models</h2>
+<p>Both strategies are implemented as “model objects”: a parameter vector plus a choice rule and an update rule. This is the core modelling move in rule-based cognitive modelling: the hypothesis is expressed as an executable procedure that generates behaviour, not just as a verbal description.</p>
+</section>
+<section id="simulation-design" class="level2" data-number="7">
+<h2 data-number="7" class="anchored" data-anchor-id="simulation-design"><span class="header-section-number">7</span> Simulation design</h2>
+<p>We run a tournament of pairings (each strategy against itself and against the other). For each pairing we simulate (600) matches. To capture heterogeneity, each simulated agent samples parameters from the Stan prior and plays one match with those parameters.</p>
+<p>The pipeline saves: - trial-level output (<code>trials.csv</code>) for learning curves, - match-level summaries (<code>matches.csv</code>) for tournament outcomes, - per-player summaries (<code>players.csv</code>) for role effects and behavioural signatures, - LOO outputs (<code>loo_dot.csv</code>, <code>loo_comparison_table.csv</code>) for model comparison.</p>
+</section>
+<section id="results-behaviour-in-tournament-simulations" class="level2" data-number="8">
+<h2 data-number="8" class="anchored" data-anchor-id="results-behaviour-in-tournament-simulations"><span class="header-section-number">8</span> Results: behaviour in tournament simulations</h2>
+<section id="fig-0-trial-dynamics-and-the-role-swap" class="level3" data-number="8.1">
+<h3 data-number="8.1" class="anchored" data-anchor-id="fig-0-trial-dynamics-and-the-role-swap"><span class="header-section-number">8.1</span> Fig 0 — Trial dynamics and the role swap</h3>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="outputs/figs/fig0_dynamics.png" class="img-fluid figure-img" width="1000"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>Interpretation:</p>
+<p>This figure shows mean cumulative payoff for player A over trials (ribbon = ±1 SE). The dashed vertical line marks the role swap.</p>
+<p>What this plot is for (cognitively): - It reveals <em>dynamics</em>: does an advantage emerge early, slowly, or only after the swap? - It shows <em>adaptation costs</em>: if a strategy needs reinforcement to re-tune after the swap, you often see a transient kink or change in slope around the swap. - It separates “overall win” from “how the win was achieved”.</p>
+</section>
+<section id="fig-1-tournament-performance-who-beats-whom" class="level3" data-number="8.2">
+<h3 data-number="8.2" class="anchored" data-anchor-id="fig-1-tournament-performance-who-beats-whom"><span class="header-section-number">8.2</span> Fig 1 — Tournament performance (who beats whom?)</h3>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="outputs/figs/fig1_matchups.png" class="img-fluid figure-img" width="900"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>To make the figure interpretable as evidence, here are the exact mean payoffs and bootstrap 95% intervals (same summary the bars represent):</p>
+<div class="cell">
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>Tournament outcomes with bootstrap 95% intervals. Payoffs are for player A.</caption>
+<colgroup>
+<col style="width: 13%">
+<col style="width: 11%">
+<col style="width: 5%">
+<col style="width: 6%">
+<col style="width: 20%">
+<col style="width: 21%">
+<col style="width: 21%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Pairing (A vs B)</th>
+<th style="text-align: right;">Mean payoff A</th>
+<th style="text-align: right;">CI low</th>
+<th style="text-align: right;">CI high</th>
+<th style="text-align: right;">Mean payoff (first half)</th>
+<th style="text-align: right;">Mean payoff (second half)</th>
+<th style="text-align: right;">Mean swing (second-first)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">kToM vs WSLS</td>
+<td style="text-align: right;">6.14</td>
+<td style="text-align: right;">5.35</td>
+<td style="text-align: right;">6.93</td>
+<td style="text-align: right;">3.20</td>
+<td style="text-align: right;">2.94</td>
+<td style="text-align: right;">-0.25</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">WSLS vs WSLS</td>
+<td style="text-align: right;">0.13</td>
+<td style="text-align: right;">-0.67</td>
+<td style="text-align: right;">0.91</td>
+<td style="text-align: right;">-0.06</td>
+<td style="text-align: right;">0.19</td>
+<td style="text-align: right;">0.26</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">kToM vs kToM</td>
+<td style="text-align: right;">-0.25</td>
+<td style="text-align: right;">-0.96</td>
+<td style="text-align: right;">0.43</td>
+<td style="text-align: right;">-0.32</td>
+<td style="text-align: right;">0.07</td>
+<td style="text-align: right;">0.39</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">WSLS vs kToM</td>
+<td style="text-align: right;">-5.37</td>
+<td style="text-align: right;">-6.18</td>
+<td style="text-align: right;">-4.57</td>
+<td style="text-align: right;">-2.40</td>
+<td style="text-align: right;">-2.97</td>
+<td style="text-align: right;">-0.56</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>Interpretation:</p>
+<p>This is the headline “who exploits whom?” result. Mean payoff near 0 is what you expect when neither side has a stable advantage under bounded rationality and noise. Large positive or negative means indicate systematic exploitability.</p>
+<p>The cleanest asymmetry is in the cross-play between the two different strategies (kToM vs WSLS vs WSLS vs kToM). That is theoretically expected: a belief learner can exploit predictable reinforcement patterns, while WSLS does not represent the opponent.</p>
+<p>The “swing” column (second half minus first half) is a direct way to see whether the role swap changes who is advantaged within the same match, i.e., whether the strategy interaction depends on the current contingency.</p>
+</section>
+<section id="fig-2-role-sensitivity-matcher-advantage" class="level3" data-number="8.3">
+<h3 data-number="8.3" class="anchored" data-anchor-id="fig-2-role-sensitivity-matcher-advantage"><span class="header-section-number">8.3</span> Fig 2 — Role sensitivity (Matcher advantage)</h3>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="outputs/figs/fig2_role_advantage.png" class="img-fluid figure-img" width="700"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>A compact numeric summary:</p>
+<div class="cell">
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>Role sensitivity: payoff as Matcher minus payoff as Mismatcher (bootstrap 95% CI).</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Strategy</th>
+<th style="text-align: right;">Mean matcher advantage</th>
+<th style="text-align: right;">CI low</th>
+<th style="text-align: right;">CI high</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">WSLS</td>
+<td style="text-align: right;">0.076</td>
+<td style="text-align: right;">-0.315</td>
+<td style="text-align: right;">0.473</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">kToM</td>
+<td style="text-align: right;">0.011</td>
+<td style="text-align: right;">-0.343</td>
+<td style="text-align: right;">0.377</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>Interpretation:</p>
+<p>This figure isolates the role manipulation. If a model represents the goal explicitly (match vs mismatch), you expect clearer and more systematic re-mapping across the swap. If a model is purely reinforcement-driven, role effects can be noisier and depend on how quickly the feedback loop re-stabilises.</p>
+<p>In these simulations, both strategies show wide uncertainty around the role effect. That is not surprising: Matching Pennies is balanced in expectation, and with lapses/noise, the “role advantage” can be small relative to match-to-match variability.</p>
+</section>
+<section id="behavioural-signature-check-does-wsls-actually-look-like-wsls" class="level3" data-number="8.4">
+<h3 data-number="8.4" class="anchored" data-anchor-id="behavioural-signature-check-does-wsls-actually-look-like-wsls"><span class="header-section-number">8.4</span> Behavioural signature check: does WSLS actually look like WSLS?</h3>
+<p>A useful mechanistic sanity check is whether agents behave in a way that matches the verbal model description. WSLS should repeat more after wins than after losses.</p>
+<div class="cell">
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>Behavioural signature: repeat probabilities estimated from transition counts.</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Strategy</th>
+<th style="text-align: right;">Repeat after win</th>
+<th style="text-align: right;">Repeat after loss</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">WSLS</td>
+<td style="text-align: right;">0.572</td>
+<td style="text-align: right;">0.556</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">kToM</td>
+<td style="text-align: right;">0.711</td>
+<td style="text-align: right;">0.309</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>Interpretation:</p>
+<p>If WSLS is implemented correctly and sampled from sensible priors, it should show a stronger “repeat after win” tendency than “repeat after loss”. The belief learner does not encode WSLS directly, so its repeat/shift pattern can look different and can vary with (, ), and lapse.</p>
+</section>
+<section id="fig-4-payoff-distributions-variance-not-only-means-optional" class="level3" data-number="8.5">
+<h3 data-number="8.5" class="anchored" data-anchor-id="fig-4-payoff-distributions-variance-not-only-means-optional"><span class="header-section-number">8.5</span> Fig 4 — Payoff distributions (variance, not only means) (optional)</h3>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="outputs/figs/fig4_payoff_distribution.png" class="img-fluid figure-img" width="900"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>Interpretation:</p>
+<p>The bar plot compresses each pairing into a mean ± interval. The violin plot shows the full distribution of outcomes across simulations. This matters because two strategies can have similar mean performance but different risk profiles (stable vs high-variance). In cognitive terms, high variance can reflect sensitivity to early random events and lapses, not just “skill”.</p>
+</section>
+</section>
+<section id="model-fitting-can-we-identify-the-mechanisms" class="level2" data-number="9">
+<h2 data-number="9" class="anchored" data-anchor-id="model-fitting-can-we-identify-the-mechanisms"><span class="header-section-number">9</span> Model fitting: can we identify the mechanisms?</h2>
+<p>A mechanistic model should not only generate behaviour; it should also be distinguishable when fit to data. Here we fit both models to synthetic datasets generated by each strategy and compare them with approximate leave-one-out cross-validation (LOO).</p>
+<section id="fig-5-loo-model-comparison" class="level3" data-number="9.1">
+<h3 data-number="9.1" class="anchored" data-anchor-id="fig-5-loo-model-comparison"><span class="header-section-number">9.1</span> Fig 5 — LOO model comparison</h3>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="outputs/figs/fig5_loo_dot.png" class="img-fluid figure-img" width="700"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>Key numbers (ELPD difference = Belief − WSLS; bars are ±2 SE):</p>
+<ul>
+<li>WSLS-generated data: ( =) -31.43 (SE = 8.27, approx 95% range [-47.97, -14.9]).</li>
+<li>Belief-generated data: ( =) 11.02 (SE = 26.82, approx 95% range [-42.61, 64.66]).</li>
+</ul>
+<p>Interpretation:</p>
+<p>Positive differences mean the Belief model predicts better; negative means WSLS predicts better.</p>
+<p>The desirable pattern is “match the generator”: WSLS should win on WSLS-generated data, and Belief should win on Belief-generated data. When the interval includes 0, it indicates that the data horizon/noise makes discrimination difficult (a real identifiability issue rather than a coding bug).</p>
+</section>
+<section id="fig-3-posterior-parameter-interpretation-example-subjects" class="level3" data-number="9.2">
+<h3 data-number="9.2" class="anchored" data-anchor-id="fig-3-posterior-parameter-interpretation-example-subjects"><span class="header-section-number">9.2</span> Fig 3 — Posterior parameter interpretation (example subjects)</h3>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="outputs/figs/fig3_interpretation_combined.png" class="img-fluid figure-img" width="1000"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>Interpretation:</p>
+<p>Posterior densities show how the data constrain the cognitive parameters (learning rate, exploitation strength, perseveration, lapse). The dashed line is the true generating value (parameter recovery check).</p>
+<p>In Matching Pennies, perfect recovery is not expected in general: the equilibrium behaviour can look close to random, and with limited trials + lapse noise, multiple parameter settings can generate similar sequences. The correct conclusion is therefore about <em>which parameters are identifiable under the current design</em> and how uncertainty reflects cognitive ambiguity in the task.</p>
+</section>
+</section>
+<section id="discussion-why-these-results-make-sense" class="level2" data-number="10">
+<h2 data-number="10" class="anchored" data-anchor-id="discussion-why-these-results-make-sense"><span class="header-section-number">10</span> Discussion (why these results make sense)</h2>
+<p>WSLS and kToM-inspired belief learning make different cognitive commitments.</p>
+<p>WSLS is a bounded-memory reinforcement heuristic. It is plausible as a “cheap” strategy but it is systematically exploitable by opponents that can detect its regularities. It also has no explicit representation of the role contingency; it adapts only through feedback.</p>
+<p>The belief learner adds a small internal state (belief about the opponent) and explicit conditioning on the match/mismatch goal. This makes it more flexible around the role swap and better suited to exploiting predictable opponents, while still being cognitively constrained (compressed memory, incremental update, lapse noise).</p>
+<p>The core figures connect these commitments to observable signatures: (i) trial dynamics and swap adaptation, (ii) robust pairing differences across simulations, (iii) whether role matters systematically, and (iv) whether the two models are distinguishable in model comparison.</p>
+</section>
+<section id="reproducibility-how-to-run" class="level2" data-number="11">
+<h2 data-number="11" class="anchored" data-anchor-id="reproducibility-how-to-run"><span class="header-section-number">11</span> Reproducibility (how to run)</h2>
+<p>From the <code>assignment1/</code> folder:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">Rscript</span> run_all.R</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>This generates the CSVs in <code>outputs/data/</code> and the figures in <code>outputs/figs/</code>, which this document loads.</p>
+</section>
+
+</main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>

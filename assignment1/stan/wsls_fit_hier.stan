@@ -3,7 +3,7 @@
 // Hierarchical WSLS policy model.
 //
 // We fit subject-level parameters, with population-level pooling.
-// This mirrors the "simulate -> fit -> interpret" workflow from the course.
+// This mirrors the "simulate -> fit -> interpret" workflow.
 //
 // Data: multiple sequences (subjects) of repeated Matching Pennies.
 // We condition on the opponent actions and on the role (Matcher/Mismatcher).

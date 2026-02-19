@@ -1,27 +1,12 @@
 # Assignment 1 — Matching Pennies (WSLS vs k-ToM-inspired belief learning)
 
-This folder contains everything needed for the Assignment 1 deliverable.
+This repository contains Assignment 1 for Advanced Cognitive Modelling.
 
-What this pipeline does
-1) Simulates repeated Matching Pennies with a mid-game **role swap** (30 trials + 30 trials).
-2) Implements two strategies:
-   - WSLS (Win–Stay / Lose–Shift)
-   - k-ToM-inspired belief learning (interpretable opponent modelling)
-3) Uses Stan in two ways:
-   - **Fixed-parameter** models to sample heterogeneous agent parameters from explicit priors.
-   - **Hierarchical** fitted models for parameter recovery + interpretation.
-4) Produces:
-   - Tournament plots (performance + role sensitivity + payoff variance)
-   - A Chapter-5-style interpretation plot (posterior + recovery)
-   - LOO model comparison (table + dot plot)
+The assignment documents and formalises two strategies for repeated Matching Pennies (with a mid-game role swap):  
+1) Win–Stay / Lose–Shift (WSLS)  
+2) k-ToM-inspired belief learning (simple opponent-belief update + role-dependent action mapping)
 
-## How to run (RStudio recommended)
+The project includes simulation results (tournament performance, role-swap dynamics) and a model-fitting section (Stan + LOO comparison) to show that the strategies are mechanistic and distinguishable.
 
-1) Make sure packages are available (best via `renv::restore()` from repo root).
-2) Install CmdStan once:
-   - `cmdstanr::install_cmdstan()`
-3) Open `run_all.R` and click **Source**.
-
-Outputs go to:
-- `outputs/figs/`
-- `outputs/data/`
+Main write-up: `assignment1/assignment1_new.qmd`  
+Figures and CSV outputs are in `assignment1/outputs/`.

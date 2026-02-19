@@ -10,6 +10,7 @@
 # -----------------------------------------------------------------------------
 
 # --- Working directory -------------------------------------------------------
+# If you run this in RStudio, it will set the working directory to the script's location.
 if (requireNamespace("rstudioapi", quietly = TRUE) && rstudioapi::isAvailable()) {
   setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
 }
@@ -65,18 +66,40 @@ models <- compile_models()
 
 # --- 1) Tournament (behavioural comparison) -----------------------------------
 message("\n=== 1) Tournament simulations ===")
-res <- run_tournament(models = models, n_sims = N_SIMS, T = T_TRIALS, seed = SEED)
+res <- run_tournament(
+  models = models,
+  n_sims = N_SIMS,
+  T = T_TRIALS,
+  seed = SEED,
+  return_trials = TRUE
+)
 
-matches <- res$matches
-players <- res$players
+matches <- res$matches # one row per sim x pairing (summary of final payoffs)
+players <- res$players # one row per sim x pairing x role (summary of role advantage)
+trials  <- res$trials # one row per sim x pairing x trial (full sequences; can be huge!)
+
+write_csv(trials, file.path(OUT_DATA_DIR, "trials.csv"))
+
+# plot0 doesn't work when the code is concise so...
+message("trials rows: ", nrow(trials)) # taking forever; nrow(trials) = 4 * N_SIMS * T = 4 * 240000 * 100 = 96 million rows
+
+trials_small <- dplyr::filter(trials, sim_id <= 2000) # this is just for testing the plotting code on a smaller subset of the data (2000 sims instead of 240000), to make it faster to iterate on the plot design. The full dataset is still saved as trials.csv, and the final plot will be generated from the full dataset (but it takes a long time to run, so we can use this smaller subset for development).
+
+message("trials_small dim: ", paste(dim(trials_small), collapse = " x ")) # trials_small dim: 240000 x 10
+message("unique pairings: ", dplyr::n_distinct(trials_small$pairing)) # unique pairings: 4
+message("max sim_id: ", max(trials_small$sim_id)) # max sim_id: 600
+
+print(system.time(
+  plot_fig0_dynamics(trials_small, file.path(OUT_FIG_DIR, "fig0_dynamics.png"), swap_trial = HALF_TRIAL)
+))
 
 write_csv(matches, file.path(OUT_DATA_DIR, "matches.csv"))
 write_csv(players, file.path(OUT_DATA_DIR, "players.csv"))
 
 # Summaries + plots
 message("\n=== 2) Bootstrap summaries + tournament plots ===")
-matchup_sum <- summarise_matchups(matches, R = BOOT_R, level = CI_LEVEL, seed = SEED)
-role_sum    <- summarise_role_advantage(players, R = BOOT_R, level = CI_LEVEL, seed = SEED)
+matchup_sum <- summarise_matchups(matches, R = BOOT_R, level = CI_LEVEL, seed = SEED) # this is the slow step, because of the bootstrapping (R = 400 resamples per matchup)
+role_sum    <- summarise_role_advantage(players, R = BOOT_R, level = CI_LEVEL, seed = SEED) # this is also slow, because of the bootstrapping (R = 400 resamples per strategy)
 
 write_csv(matchup_sum, file.path(OUT_DATA_DIR, "matchup_summary.csv"))
 write_csv(role_sum,    file.path(OUT_DATA_DIR, "role_advantage_summary.csv"))
@@ -95,17 +118,17 @@ message("\n=== 3) Parameter recovery + hierarchical model fits ===")
 # Why? It lets us test whether our fitted models recover the mechanisms.
 
 # Sample subject parameters (Stan priors)
-wsls_params <- sample_priors(models$priors_wsls, n_draws = N_SUBJECTS_RECOVERY, seed = SEED)
-wsls_params <- wsls_params[, c("p_repeat_win_gq", "p_repeat_loss_gq", "lapse_gq")]
-names(wsls_params) <- c("p_repeat_win", "p_repeat_loss", "lapse")
+wsls_params <- sample_priors(models$priors_wsls, n_draws = N_SUBJECTS_RECOVERY, seed = SEED) # this is a bit slow, because of the sampling (N_SUBJECTS_RECOVERY = 1000 draws from the priors)
+wsls_params <- wsls_params[, c("p_repeat_win_gq", "p_repeat_loss_gq", "lapse_gq")] # we only keep the "gq" parameters, which are the ones used for data generation (the non-gq parameters are just for fitting)
+names(wsls_params) <- c("p_repeat_win", "p_repeat_loss", "lapse") # we rename them to match the parameter names in the Stan model (this makes it easier to pass them to the simulate_dataset function)
 
 bel_params <- sample_priors(models$priors_belief, n_draws = N_SUBJECTS_RECOVERY, seed = SEED + 1)
 bel_params <- bel_params[, c("alpha_gq", "beta_gq", "lapse_gq")]
 names(bel_params) <- c("alpha", "beta", "lapse")
 
 # Opponent parameters (draw a fresh opponent for each subject)
-wsls_opp <- sample_priors(models$priors_wsls, n_draws = N_SUBJECTS_RECOVERY, seed = SEED + 2)
-wsls_opp <- wsls_opp[, c("p_repeat_win_gq", "p_repeat_loss_gq", "lapse_gq")]
+wsls_opp <- sample_priors(models$priors_wsls, n_draws = N_SUBJECTS_RECOVERY, seed = SEED + 2) # we sample a fresh set of opponent parameters for each subject, to make the task more realistic (if all subjects faced the same opponent, it would be easier to fit the models, but less ecologically valid)
+wsls_opp <- wsls_opp[, c("p_repeat_win_gq", "p_repeat_loss_gq", "lapse_gq")] # 
 names(wsls_opp) <- c("p_repeat_win", "p_repeat_loss", "lapse")
 
 bel_opp <- sample_priors(models$priors_belief, n_draws = N_SUBJECTS_RECOVERY, seed = SEED + 3)
@@ -146,13 +169,16 @@ message("Fitting Belief model to Belief-generated data")
 fit_bel_on_bel   <- fit_model(models$fit_belief, bel_stan, seed = SEED + 30, chains = STAN_CHAINS, iter_warmup = STAN_WARMUP, iter_sampling = STAN_SAMPLES)
 
 # Posterior draws
+# We convert the CmdStanR draws to data frames for easier manipulation (the as_draws_df function also adds the parameter names as columns, which is useful for summarising and plotting).
 draws_wsls_on_wsls <- posterior::as_draws_df(fit_wsls_on_wsls$draws())
 draws_bel_on_bel   <- posterior::as_draws_df(fit_bel_on_bel$draws())
 
 # Parameter recovery summaries (subject-level)
+# We summarise the posterior draws for each subject and parameter, and compare them to the true values used for data generation. The summarise_subject_params function computes the mean and 95% credible interval for each subject's parameter, and also includes the true value for reference.
 true_wsls_df <- as.data.frame(wsls_params) |> mutate(subject = row_number())
 true_bel_df  <- as.data.frame(bel_params)  |> mutate(subject = row_number())
 
+# We do this separately for each parameter, because the parameter names are different in the two models (e.g., p_repeat_win vs alpha). The regex patterns "^p_repeat_win\\[" etc. are used to select the relevant parameters from the posterior draws (the square brackets indicate that these are subject-level parameters, e.g., p_repeat_win[1], p_repeat_win[2], etc.).
 rec_win  <- summarise_subject_params(draws_wsls_on_wsls, "^p_repeat_win\\[",  true_values = true_wsls_df$p_repeat_win)
 rec_loss <- summarise_subject_params(draws_wsls_on_wsls, "^p_repeat_loss\\[", true_values = true_wsls_df$p_repeat_loss)
 rec_lapW <- summarise_subject_params(draws_wsls_on_wsls, "^lapse\\[",         true_values = true_wsls_df$lapse)
@@ -198,6 +224,7 @@ combined <- (p_post_wsls / p_post_bel) / (p_rec_wsls | p_rec_bel)
 ggplot2::ggsave(file.path(OUT_FIG_DIR, "fig3_interpretation_combined.png"), combined, width = 10, height = 10, dpi = 200)
 
 # --- 4) LOO model comparison (table + dot plot) -------------------------------
+# We compare the models using leave-one-out cross-validation (LOO), which estimates the expected log predictive density for new data. The compute_loo function computes the LOO values for each fitted model, and the loo_table_and_dot function creates a table of LOO differences and a dot plot of the LOO values for each dataset.
 message("\n=== 4) LOO model comparison ===")
 
 loo_wsls_on_wsls <- compute_loo(fit_wsls_on_wsls)
@@ -221,9 +248,10 @@ loo_dot <- dplyr::bind_rows(
   transform(cmp_bel$dot,  dataset = "Belief-generated")
 )
 write_csv(loo_dot, file.path(OUT_DATA_DIR, "loo_dot.csv"))
-
 plot_loo_dot(loo_dot, file.path(OUT_FIG_DIR, "fig5_loo_dot.png"))
 
 message("\nDone. Outputs are in:")
 message(" - ", OUT_DATA_DIR)
 message(" - ", OUT_FIG_DIR)
+
+# quarto::quarto_render("assignment1.qmd") # render over here if u want the nice diagram; it doesn't work over the render button :P

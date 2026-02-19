@@ -1,15 +1,15 @@
 # R/config.R
 # -----------------------------------------------------------------------------
 # Assignment 1 configuration.
-# Keep all important numbers in one place so it's easy to tweak.
+# Keeping all important numbers in one place so it's easy to tweak.
 # -----------------------------------------------------------------------------
 
 # --- Core simulation protocol ------------------------------------------------
-T_TRIALS   <- 60
+T_TRIALS   <- 100
 HALF_TRIAL <- T_TRIALS / 2
 SEED       <- 123
 
-# Matching Pennies payoff (A perspective). Zero-sum.
+# Matching Pennies pay-off (A perspective). Zero-sum.
 PAYOFF_WIN  <-  1
 PAYOFF_LOSS <- -1
 

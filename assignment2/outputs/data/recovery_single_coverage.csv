@@ -1,0 +1,13 @@
+T,param,coverage
+30,lapse,0.95
+30,p_loss,0.925
+30,p_win,0.975
+60,lapse,0.95
+60,p_loss,0.975
+60,p_win,0.9
+120,lapse,1
+120,p_loss,0.975
+120,p_win,0.95
+240,lapse,0.975
+240,p_loss,0.95
+240,p_win,0.9
