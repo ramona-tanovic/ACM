@@ -8,6 +8,7 @@ pkgs <- c(
   "loo",
   "dplyr",
   "tidyr",
+  "tibble",
   "ggplot2",
   "readr",
   "purrr",
@@ -16,22 +17,26 @@ pkgs <- c(
 
 missing <- pkgs[!vapply(pkgs, requireNamespace, logical(1), quietly = TRUE)]
 if (length(missing) > 0) {
-  stop("Missing packages: ", paste(missing, collapse = ", "),
-       "\nInstall them (preferably via renv) and rerun.")
+  stop(
+    "Missing packages: ", paste(missing, collapse = ", "), "\n",
+    "Install them (preferably via renv) and rerun."
+  )
 }
 
 # Load what we use a lot (explicit for readability)
-library(dplyr)
-library(tidyr)
-library(ggplot2)
-library(readr)
-library(purrr)
-library(stringr)
+suppressPackageStartupMessages({
+  library(dplyr)
+  library(tidyr)
+  library(ggplot2)
+  library(readr)
+  library(purrr)
+  library(stringr)
+})
 
 # bayesplot theme
 bayesplot::bayesplot_theme_set(bayesplot::theme_default())
 
-# cmdstanr: make sure CmdStan exists
+# cmdstanr: warn early if CmdStan is not configured
 if (is.null(cmdstanr::cmdstan_path()) || cmdstanr::cmdstan_path() == "") {
   message("CmdStan not set. If needed run: cmdstanr::install_cmdstan()")
 }

@@ -2,9 +2,13 @@
 title: "Assignment 1 — Matching Pennies: WSLS vs k-ToM-inspired belief learning"
 author: "Amalie Overgaard Stevnhøj Pedersen, Gréta Harsányi, Mads Munch Mikkelsen, Ramona Tanović"
 format:
+  pdf:
+    toc: true
+    number-sections: true
   html:
     toc: true
     number-sections: true
+    embed-resources: true
 execute:
   echo: false
   warning: false
