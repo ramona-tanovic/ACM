@@ -284,4 +284,4 @@ message("Outputs:")
 message(" - data: ", OUT_DATA_DIR)
 message(" - figs: ", OUT_FIG_DIR)
 
- quarto::quarto_render("assignment1.qmd") # render over here if u want the nice diagram; it doesn't work over the render button :P
+# quarto::quarto_render("assignment1.qmd") # render over here if u want the nice diagram; it doesn't work over the render button :P
