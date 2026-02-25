@@ -1,12 +1,11 @@
 ---
 title: "Assignment 2 — Stan model fitting and validation for Matching Pennies"
-author:
-  - "Anton Nymann"
+author: "Ramona Tanović"
 format:
   html:
     toc: true
     number-sections: true
-    embed-resources: trueue
+    embed-resources: true
   pdf:
     toc: true
     number-sections: true
@@ -44,7 +43,7 @@ The agent's reward depends on whether they win on **match** or **mismatch**:
 
 ### Cognitive mechanism
 
-The cognitive assumption is a minimal *reinforcement-like* heuristic: **Win-Stay / Lose-Shift**.
+The cognitive assumption is a minimal reinforcement-like heuristic: **Win-Stay / Lose-Shift**.
 
 - After a win, repeat the previous action with probability `p_win`.
 - After a loss, repeat the previous action with probability `p_loss`.
@@ -96,14 +95,14 @@ cat("```stan
 
 ## Model quality checks
 
-This section reports checks that answer: “is the model coherent *before* seeing the data?” and “does it reproduce key patterns *after* fitting?”
+This section reports checks that answer: “is the model coherent before seeing the data?” and “does it reproduce key patterns after fitting?”
 
 ### Prior → posterior update
 
 If the posterior looks identical to the prior, the data did not inform the parameter.
 If the posterior is meaningfully narrower and/or shifted, the model is learning from data.
 
-![](outputs/figs/figA_prior_posterior_update.png)
+![](outputs/figs/fig0_prior_posterior_update.png)
 
 ### Prior predictive vs posterior predictive
 
@@ -112,7 +111,7 @@ Here the summary statistic is a repeat-rate computed separately after wins and a
 - Prior predictive: what the model expects before seeing data.
 - Posterior predictive: what the model expects after updating with the observed data.
 
-![](outputs/figs/figB_prior_vs_posterior_predictive.png)
+![](outputs/figs/fig2_prior_vs_posterior_predictive.png)
 
 ### Posterior summary table
 
@@ -124,7 +123,7 @@ readr::read_csv(file.path("outputs", "tables", "tableA_posterior_summary.csv"))
 
 ### Why parameter recovery?
 
-Parameter recovery tests **internal validity** / **identifiability**: if we simulate data from known parameter values and then fit the model back to that data, can we recover the true values?
+Parameter recovery tests internal validity / identifiability: if we simulate data from known parameter values and then fit the model back to that data, can we recover the true values?
 
 If recovery fails even on simulated data, then interpretation of fitted parameters on real data is risky.
 
@@ -140,20 +139,20 @@ For each trial length `T` (multiple settings), the pipeline:
 
 ### Recovery results
 
-![](outputs/figs/figC_recovery_scatter.png)
+![](outputs/figs/fig3_recovery_scatter.png)
 
 ### How many trials are needed?
 
 A practical way to answer “how many trials” is to look at whether credible intervals have reasonable coverage and whether posterior means track the diagonal (true=estimated).
 
-![](outputs/figs/figD_recovery_coverage.png)
+![](outputs/figs/fig4_recovery_coverage.png)
 
 ### Role of priors (small sensitivity illustration)
 
 This figure illustrates that priors can materially affect predictions and posteriors, especially with shorter sequences.
 Here we strengthen the prior belief that lapse rates are small.
 
-![](outputs/figs/figE_prior_sensitivity_lapse.png)
+![](outputs/figs/fig5_prior_sensitivity_lapse.png)
 
 ## Optional extensions
 

@@ -20,7 +20,7 @@ if (requireNamespace("renv", quietly = TRUE)) {
 }
 
 # --- 2) Load libraries ----
-source("R/00_setup.R")
+source("R/setup.R")
 
 # --- 3) Compile Stan models ----
 source("R/stan_helpers.R")
@@ -28,9 +28,9 @@ mod_single <- compile_stan("stan/wsls_single_agent.stan")
 mod_hier   <- compile_stan("stan/wsls_multilevel.stan")
 
 # --- 4) Simulated data checks (prior predictive, prior→posterior , PPC) ----
-source("R/01_simulate.R")
-source("R/02_fit_single.R")
-source("R/03_checks.R")
+source("R/simulate.R")
+source("R/fit_single.R")
+source("R/checks.R")
 
 # One simulated dataset for illustration in the document
 sim <- simulate_wsls_game(
@@ -54,15 +54,15 @@ make_single_agent_checks(
 )
 
 # --- 5) Parameter recovery (single-agent) across trial lengths ----
-source("R/04_recovery_single.R")
+source("R/recovery_single.R")
 run_recovery_single(mod = mod_single)
 
 # --- 6) Multilevel extension + recovery ----
-source("R/05_recovery_multilevel.R")
+source("R/recovery_multilevel.R")
 run_recovery_multilevel(mod = mod_hier)
 
 # --- 7) Empirical dataset fit (optional) ----
-source("R/06_empirical_fit.R")
+source("R/empirical_fit.R")
 run_empirical_fit(mod = mod_hier)
 
 message("Done. See outputs/figs and outputs/data.")

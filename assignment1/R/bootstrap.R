@@ -3,10 +3,7 @@
 # Bootstrap uncertainty intervals.
 #
 # Note:
-# The bootstrap is a simple way to quantify uncertainty when you have many
-# independent simulation runs. You re-sample simulations with replacement and
-# recompute the statistic (e.g., the mean). The spread of bootstrap replicates
-# gives an interval.
+# The bootstrap is a simple way to quantify uncertainty when you have many independent simulation runs. You re-sample simulations with replacement and recompute the statistic (e.g., the mean). The spread of bootstrap replicates gives an interval.
 # -----------------------------------------------------------------------------
 
 # Bootstrap confidence interval for the mean.

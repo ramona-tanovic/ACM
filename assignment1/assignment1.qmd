@@ -188,7 +188,7 @@ The key limitation is that it cannot condition explicitly on the match/mismatch 
 
 ### Intuition
 
-This strategy maintains a simple belief about the opponent’s action tendency and updates that belief from observations. It is “k-ToM-inspired” in that the agent behaves as if the opponent has a stable (possibly biased) policy and tries to exploit it.
+This strategy maintains a simple belief about the opponent’s action tendency and updates that belief from observations. It is “k-ToM-inspired” in that the agent behaves as if the opponent has a stable (possibly biased) policy and tries to exploit it. The belief is updated incrementally with a learning rate, and action selection is conditioned on the current role (Matcher vs Mismatcher). 
 
 It remains cognitively constrained: rather than storing the full history, it compresses experience into a single belief state and updates incrementally.
 
@@ -248,11 +248,11 @@ include_if_exists(fig_path("fig0_dynamics.png"))
 
 Interpretation:
 
-This figure shows mean cumulative payoff for player A over trials (ribbon = ±1 SE). The dashed vertical line marks the role swap.
+This figure shows mean cumulative pay-off for player A over trials (ribbon = ±1 SE). The dashed vertical line marks the role swap.
 
-What this plot is for (cognitively):
-- It reveals *dynamics*: does an advantage emerge early, slowly, or only after the swap?
-- It shows *adaptation costs*: if a strategy needs reinforcement to re-tune after the swap, you often see a transient kink or change in slope around the swap.
+What this plot is for:
+- It reveals dynamics: does an advantage emerge early, slowly, or only after the swap?
+- It shows adaptation costs: if a strategy needs reinforcement to re-tune after the swap, you often see a transient kink or change in slope around the swap.
 - It separates “overall win” from “how the win was achieved”.
 
 ### Fig 1 — Tournament performance (who beats whom?)
@@ -382,7 +382,7 @@ Interpretation:
 
 Posterior densities show how the data constrain the cognitive parameters (learning rate, exploitation strength, perseveration, lapse). The dashed line is the true generating value (parameter recovery check).
 
-In Matching Pennies, perfect recovery is not expected in general: the equilibrium behaviour can look close to random, and with limited trials + lapse noise, multiple parameter settings can generate similar sequences. The correct conclusion is therefore about *which parameters are identifiable under the current design* and how uncertainty reflects cognitive ambiguity in the task.
+In Matching Pennies, perfect recovery is not expected in general: the equilibrium behaviour can look close to random, and with limited trials + lapse noise, multiple parameter settings can generate similar sequences. The correct conclusion is therefore about which parameters are identifiable under the current design and how uncertainty reflects cognitive ambiguity in the task.
 
 ## Discussion (why these results make sense)
 

@@ -42,22 +42,22 @@ if (requireNamespace("renv", quietly = TRUE) && file.exists(file.path(REPO_ROOT,
 
 # --- Packages ----------------------------------------------------------------
 source(file.path("R", "dependencies.R"))
-missing <- ACM_PACKAGES[!vapply(ACM_PACKAGES, requireNamespace, logical(1), quietly = TRUE)]
-if (length(missing) > 0) {
-  stop(
-    "Missing packages: ", paste(missing, collapse = ", "), "\n",
-    "If you use renv: renv::restore()\n",
-    "Otherwise install them with install.packages(...).\n"
-  )
-}
-
-suppressPackageStartupMessages({
-  library(dplyr)
-  library(tidyr)
-  library(readr)
-  library(ggplot2)
-  library(patchwork)
-})
+# missing <- ACM_PACKAGES[!vapply(ACM_PACKAGES, requireNamespace, logical(1), quietly = TRUE)]
+# if (length(missing) > 0) {
+#   stop(
+#     "Missing packages: ", paste(missing, collapse = ", "), "\n",
+#     "If you use renv: renv::restore()\n",
+#     "Otherwise install them with install.packages(...).\n"
+#   )
+# }
+# 
+# suppressPackageStartupMessages({
+#   library(dplyr)
+#   library(tidyr)
+#   library(readr)
+#   library(ggplot2)
+#   library(patchwork)
+# })
 
 # --- Source project code ------------------------------------------------------
 source(file.path("R", "config.R"))
@@ -284,4 +284,4 @@ message("Outputs:")
 message(" - data: ", OUT_DATA_DIR)
 message(" - figs: ", OUT_FIG_DIR)
 
-# quarto::quarto_render("assignment2.qmd") # render over here if u want the nice diagram; it doesn't work over the render button :P
+ quarto::quarto_render("assignment1.qmd") # render over here if u want the nice diagram; it doesn't work over the render button :P

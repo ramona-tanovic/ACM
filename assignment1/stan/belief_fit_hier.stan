@@ -3,12 +3,11 @@
 // Hierarchical belief-learning ("k-ToM-inspired") model.
 //
 // The agent maintains a belief about the opponent's probability of action=1.
-// It updates this belief with a delta rule (alpha), and chooses a role-
-// dependent best response, softened by beta and lapse.
+// It updates this belief with a delta rule (alpha), and chooses a role-dependent best response, softened by beta and lapse.
 // -----------------------------------------------------------------------------
 
 data {
-  int<lower=1> S; 
+  int<lower=1> S;
   int<lower=2> T;
 
   array[S, T] int<lower=0, upper=1> a;
