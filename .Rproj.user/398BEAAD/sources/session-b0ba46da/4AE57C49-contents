@@ -1,0 +1,7 @@
+# Git Cheat Sheet for RStudio
+
+git pull
+git status
+git add .
+git commit -m "ok"
+git push
