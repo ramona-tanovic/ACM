@@ -4,31 +4,25 @@
 .Ruserdata
 .Renviron
 .Rapp.history
-
 # RStudio project user settings (can be large + machine-specific)
 .Rproj.user/
 .rproj.user/
-
 # --- OS ----------------------------------------------------------------------
 .DS_Store
 Thumbs.db
-
 # --- renv --------------------------------------------------------------------
 # renv/library/
 # renv/staging/
 # renv/local/
-
 # --- Quarto / knitr ----------------------------------------------------------
 .quarto/
 **/.quarto/
 **/_site/
 **/_freeze/
 **/*_cache/
-
 # Quarto shared libs (explicitly ignored per request)
 assignment1/**/libs/
 assignment2/**/libs/
-
 # --- CmdStan / Stan build artifacts ------------------------------------------
 **/stan/*.hpp
 **/stan/*.o
@@ -36,7 +30,6 @@ assignment2/**/libs/
 **/stan/*.dll
 **/stan/*.dylib
 **/stan/*.exe
-
 # --- Misc compiled artifacts -------------------------------------------------
 *.o
 *.so
