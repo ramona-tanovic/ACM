@@ -1,0 +1,16 @@
+# RStudio user/session state
+.Rproj.user/
+.Rhistory
+.RData
+.Ruserdata
+.RDataTmp*
+
+# renv: keep the lockfile and bootstrap files, ignore local libraries/caches
+renv/library/
+renv/local/
+renv/python/
+renv/staging/
+
+# OS junk
+.DS_Store
+Thumbs.db
