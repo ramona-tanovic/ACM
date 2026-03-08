@@ -5,3 +5,8 @@ git status
 git add .
 git commit -m "ok"
 git push
+
+git rm -r --cached .Rproj.user
+git rm --cached .RData .RDataTmp .RDataTmp1 .Rhistory
+git add .gitignore
+git commit -m "Clean repo and ignore RStudio temporary files"
