@@ -17,9 +17,7 @@ Thumbs.db
 
 # Regenerable outputs
 assignment1_matching-pennies/data/derived/
-assignment1_matching-pennies/plots/
 assignment1_matching-pennies/submission/
 assignment2_stan-matching-pennies/data/derived/
 assignment2_stan-matching-pennies/data/simulated/
-assignment2_stan-matching-pennies/plots/
 assignment2_stan-matching-pennies/submission/
