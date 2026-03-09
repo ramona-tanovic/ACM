@@ -1,16 +1,29 @@
-# RStudio user/session state
-.Rproj.user/
+# Help
+git_cheatsheet.txt
+renv_maintenance.R
+
+# R / RStudio local artifacts
 .Rhistory
 .RData
 .Ruserdata
-.RDataTmp*
+.Rproj.user/
+.Rprofile
+.Renviron
 
-# renv: keep the lockfile and bootstrap files, ignore local libraries/caches
-renv/library/
-renv/local/
-renv/python/
-renv/staging/
-
-# OS junk
+# OS clutter
 .DS_Store
 Thumbs.db
+
+# Quarto caches and support folders
+.quarto/
+*_cache/
+*_files/
+
+# Regenerable outputs
+assignment1_matching-pennies/data/derived/
+assignment1_matching-pennies/plots/
+assignment1_matching-pennies/submission/
+assignment2_stan-matching-pennies/data/derived/
+assignment2_stan-matching-pennies/data/simulated/
+assignment2_stan-matching-pennies/plots/
+assignment2_stan-matching-pennies/submission/
