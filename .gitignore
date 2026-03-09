@@ -1,6 +1,6 @@
 # Help
-git_cheatsheet.txt
-renv_maintenance.R
+.git_cheatsheet.txt
+.renv_maintenance.R
 
 # R / RStudio local artifacts
 .Rhistory
