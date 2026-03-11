@@ -11,33 +11,35 @@ suppressPackageStartupMessages({
   library(patchwork)
 })
 
-raw_dir <- file.path("assignment2_stan-matching-pennies", "data", "raw")
-sim_dir <- file.path("assignment2_stan-matching-pennies", "data", "simulated")
-derived_dir <- file.path("assignment2_stan-matching-pennies", "data", "derived")
-stan_dir <- file.path("assignment2_stan-matching-pennies", "stan")
-fits_dir <- file.path("assignment2_stan-matching-pennies", "fits")
-plots_dir <- file.path("assignment2_stan-matching-pennies", "plots")
+a2_dir <- file.path("assignment2_stan-matching-pennies")
+
+r_dir <- file.path(a2_dir, "R")
+stan_dir <- file.path(a2_dir, "stan")
+data_dir <- file.path(a2_dir, "data")
+sim_dir <- file.path(data_dir, "simulated")
+derived_dir <- file.path(data_dir, "derived")
+plots_dir <- file.path(a2_dir, "plots")
+fits_dir <- file.path(a2_dir, "fits")
+
 model_file <- file.path(stan_dir, "exponential_forgetting_single_agent.stan")
 
-dirs <- c(raw_dir, sim_dir, derived_dir, stan_dir, fits_dir, plots_dir)
-for (d in dirs) {
-  if (!dir.exists(d)) {
-    dir.create(d, recursive = TRUE)
-  }
-}
+simulation_seed <- 21 
+sampling_seed <- 21
 
+# Simulation parameters
 sim_trials <- 200
-sim_alpha <- 0.20
-sim_beta <- 3.00
-sim_bias <- 0.00
-sim_m0 <- 0.50
+sim_alpha <- 0.20 # gradual updating
+sim_beta <- 3.00 # memory has a fairly strong effect on choice
+sim_bias <- 0.00 # no stable side preference
+sim_m0 <- 0.50 # neutral starting memory
 
-sampling_seed <- 1999
+# Sampling parameters
 chains_main <- 4
 iter_warmup_main <- 1000
 iter_sampling_main <- 1000
 adapt_delta_main <- 0.95
 
+# For quick testing
 chains_quick <- 2
 iter_warmup_quick <- 500
 iter_sampling_quick <- 500

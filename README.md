@@ -16,27 +16,6 @@ This repository contains my work for Advanced Cognitive Modelling.
 - `assignment2_stan-matching-pennies/stan/exponential_forgetting_single_agent.stan` is the Stan model.
 - `assignment2_stan-matching-pennies/report/A2_answer.md` is my short write-up for Assignment 2.
 
-## How I run the code
-
-For Assignment 1 I run:
-
-```r
-source(file.path("assignment1_matching-pennies", "R", "a1_all_in_one.R"))
-```
-
-For the core Assignment 2 workflow I run:
-
-```r
-source(file.path("assignment2_stan-matching-pennies", "R", "run_assignment2_core.R"))
-```
-
-For the optional parts I run:
-
-```r
-source(file.path("assignment2_stan-matching-pennies", "R", "03_parameter_recovery.R"))
-source(file.path("assignment2_stan-matching-pennies", "R", "04_empirical_example.R"))
-```
-
 ## Assignment 1 approach
 
 For Assignment 1 I keep things very simple. I compare:
