@@ -7,14 +7,6 @@ This repository contains my work for Advanced Cognitive Modelling.
 - `R/00_global_setup.R` sets the seed, loads the basic packages, and sets the plot theme.
 - `assignment1_matching-pennies/R/a1_all_in_one.R` contains the full Assignment 1 workflow in one script.
 - `assignment1_matching-pennies/report/A1_answer.md` is my short write-up for Assignment 1.
-- `assignment2_stan-matching-pennies/R/00_setup.R` stores the simple paths and defaults for Assignment 2.
-- `assignment2_stan-matching-pennies/R/01_simulate_data.R` simulates data from the recency-weighted memory model.
-- `assignment2_stan-matching-pennies/R/02_fit_model.R` prepares data, fits the Stan model, and makes the main checks.
-- `assignment2_stan-matching-pennies/R/03_parameter_recovery.R` runs a small parameter recovery analysis.
-- `assignment2_stan-matching-pennies/R/04_empirical_example.R` runs one optional empirical example.
-- `assignment2_stan-matching-pennies/R/run_assignment2_core.R` runs the main Assignment 2 workflow in order.
-- `assignment2_stan-matching-pennies/stan/exponential_forgetting_single_agent.stan` is the Stan model.
-- `assignment2_stan-matching-pennies/report/A2_answer.md` is my short write-up for Assignment 2.
 
 ## Assignment 1 approach
 
