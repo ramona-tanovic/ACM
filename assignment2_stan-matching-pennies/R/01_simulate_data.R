@@ -21,6 +21,7 @@ simulate_opponent_sequence <- function(trials, p_one = 0.60) {
 # - if alpha is large, memory moves quickly toward the new observation
 
 # This is an exponential-forgetting / recency-weighted learner because recent observations matter more than older ones.
+
 simulate_single_agent_memory <- function(
     opponent,
     alpha,

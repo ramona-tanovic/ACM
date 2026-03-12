@@ -10,7 +10,8 @@ sim_file <- file.path(sim_dir, "simulated_single_agent_data.csv")
 
 df <- read_csv(sim_file, show_col_types = FALSE)
 
-# stan likes it raw
+# stan likes it raw -> 
+# stan prefers data in the form of lists, where each element is a vector or matrix corresponding to a variable in the model
 stan_data <- list(
   T = nrow(df),
   y = as.integer(df$choice),
@@ -148,7 +149,6 @@ print(diagnostic_summary)
 
 # Prior-to-posterior update check
 # "Did the data actually move the parameter beliefs?"
-#
 # If prior and posterior look very similar, then the data were weakly informative.
 # If the posterior shifts or tightens clearly, then the data taught the model something.
 posterior_draws_df <- as_draws_df(
@@ -177,7 +177,7 @@ plot_update <- ggplot(prior_compare_df, aes(x = value, color = source, fill = so
   )
 
 # Basic posterior predictive check
-# observed vs replicated choices.
+# observed vs replicated choices
 yrep <- fit$draws("y_rep", format = "matrix")
 n_ppc <- min(100, nrow(yrep))
 
@@ -218,7 +218,7 @@ save_plot(
 )
 
 # Parameter summary
-# alpha recovered well, beta was somewhat underestimated, bias was slightly above zero, and m0 was underestimated...
+# alpha recovered well, beta was somewhat underestimated, bias was slightly above zero, and m0 was underestimated.
 
 # Diagnostic summary
 # R-hat was near 1, ESS was high, and there were no divergences, so the fit looked technically reliable. A model can sample beautifully and still be psychologically weak. Diagnostics only tell you that Stan did its job well, not that the model is necessarily the best model.

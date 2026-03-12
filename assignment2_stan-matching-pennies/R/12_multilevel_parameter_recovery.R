@@ -207,9 +207,7 @@ write_csv(
 cat("\nMultilevel recovery summary:\n")
 print(recovery_summary)
 
-# ------------------------------------------------------------
-# Plots
-# ------------------------------------------------------------
+# plots
 
 plot_pop_means <- ggplot(
   recovery_long %>% filter(type == "Population mean"),
