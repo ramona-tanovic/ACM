@@ -22,10 +22,10 @@ simulate_from_priors <- function(trials, n_sims = 300, p_opponent = 0.60) {
   out <- vector("list", length = n_sims)
   
   for (i in seq_len(n_sims)) {
-    alpha <- rbeta(1, 2, 2)
-    beta  <- rlnorm(1, 0, 0.5)
-    bias  <- rnorm(1, 0, 1)
-    m0    <- rbeta(1, 2, 2)
+    alpha <- rbeta(1, 2, 2) # memory learning rate between 0 and 1
+    beta  <- rlnorm(1, 0, 0.5) # positive influence of memory on choice, with some variability
+    bias  <- rnorm(1, 0, 1) # stable side preference, centered at 0 but with wide variability
+    m0    <- rbeta(1, 2, 2) # initial memory between 0 and 1
     
     opponent <- rbinom(trials, 1, p_opponent)
     memory_now <- m0
